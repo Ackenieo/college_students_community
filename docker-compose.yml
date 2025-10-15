@@ -1,0 +1,196 @@
+version: '3.8'
+
+services:
+  # MySQL数据库
+  mysql:
+    image: mysql:8.0
+    container_name: college-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: college_students
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - college-network
+
+  # Redis缓存
+  redis:
+    image: redis:7-alpine
+    container_name: college-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - college-network
+
+  # MongoDB数据库
+  mongodb:
+    image: mongo:6.0
+    container_name: college-mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: 123456
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - college-network
+
+  # RabbitMQ消息队列
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: college-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - college-network
+
+  # Nacos服务注册中心
+  nacos:
+    image: nacos/nacos-server:v2.2.3
+    container_name: college-nacos
+    environment:
+      - MODE=standalone
+      - SPRING_DATASOURCE_PLATFORM=mysql
+      - MYSQL_SERVICE_HOST=mysql
+      - MYSQL_SERVICE_PORT=3306
+      - MYSQL_SERVICE_DB_NAME=nacos
+      - MYSQL_SERVICE_USER=root
+      - MYSQL_SERVICE_PASSWORD=123456
+      - MYSQL_SERVICE_DB_PARAM=characterEncoding=utf8&connectTimeout=1000&socketTimeout=3000&autoReconnect=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    ports:
+      - "8848:8848"
+      - "9848:9848"
+    depends_on:
+      - mysql
+    networks:
+      - college-network
+    volumes:
+      - nacos_data:/home/nacos/data
+
+  # 配置中心
+  config-server:
+    build: .
+    container_name: college-config-server
+    ports:
+      - "8888:8888"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+    depends_on:
+      - nacos
+    networks:
+      - college-network
+    command: ["java", "-jar", "config-server.jar"]
+
+  # API网关
+  api-gateway:
+    build: .
+    container_name: college-api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+    depends_on:
+      - nacos
+      - config-server
+    networks:
+      - college-network
+    command: ["java", "-jar", "api-gateway.jar"]
+
+  # 用户服务
+  user-server:
+    build: .
+    container_name: college-user-server
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/college_students
+      - SPRING_REDIS_HOST=redis
+    depends_on:
+      - mysql
+      - redis
+      - nacos
+      - config-server
+    networks:
+      - college-network
+    command: ["java", "-jar", "user-server.jar"]
+
+  # 社区服务
+  community-server:
+    build: .
+    container_name: college-community-server
+    ports:
+      - "8082:8082"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATA_MONGODB_URI=mongodb://admin:123456@mongodb:27017/college_community?authSource=admin
+      - SPRING_REDIS_HOST=redis
+    depends_on:
+      - mongodb
+      - redis
+      - nacos
+      - config-server
+    networks:
+      - college-network
+    command: ["java", "-jar", "community-server.jar"]
+
+  # 智能体服务
+  agent-server:
+    build: .
+    container_name: college-agent-server
+    ports:
+      - "8083:8083"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_REDIS_HOST=redis
+      - DIFY_API_BASE_URL=http://dify:5001/v1
+      - DIFY_API_KEY=your-dify-api-key
+    depends_on:
+      - redis
+      - nacos
+      - config-server
+    networks:
+      - college-network
+    command: ["java", "-jar", "agent-server.jar"]
+
+  # 通知服务
+  notification-server:
+    build: .
+    container_name: college-notification-server
+    ports:
+      - "8084:8084"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_REDIS_HOST=redis
+      - SPRING_RABBITMQ_HOST=rabbitmq
+    depends_on:
+      - redis
+      - rabbitmq
+      - nacos
+      - config-server
+    networks:
+      - college-network
+    command: ["java", "-jar", "notification-server.jar"]
+
+volumes:
+  mysql_data:
+  redis_data:
+  mongodb_data:
+  rabbitmq_data:
+  nacos_data:
+
+networks:
+  college-network:
+    driver: bridge

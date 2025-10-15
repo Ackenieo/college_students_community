@@ -1,0 +1,26 @@
+server:
+  port: 8888
+
+spring:
+  application:
+    name: config-server
+  cloud:
+    config:
+      server:
+        git:
+          uri: https://github.com/your-username/college-students-config.git
+          clone-on-start: true
+        native:
+          search-locations: classpath:/config
+
+spring:
+  cloud:
+    nacos:
+      discovery:
+        server-addr: localhost:8848
+        namespace: public
+        group: DEFAULT_GROUP
+
+logging:
+  level:
+    org.springframework.cloud.config: DEBUG

@@ -1,0 +1,69 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      routes:
+        - id: user-service
+          uri: lb://user-server
+          predicates:
+            - Path=/api/users/**
+          filters:
+            - StripPrefix=2
+        - id: community-service
+          uri: lb://community-server
+          predicates:
+            - Path=/api/community/**
+          filters:
+            - StripPrefix=2
+        - id: agent-service
+          uri: lb://agent-server
+          predicates:
+            - Path=/api/agent/**
+          filters:
+            - StripPrefix=2
+        - id: notification-service
+          uri: lb://notification-server
+          predicates:
+            - Path=/api/notifications/**
+          filters:
+            - StripPrefix=2
+      default-filters:
+        - AddRequestHeader=X-Forwarded-For, ${spring.cloud.client.ip-address}
+        - AddRequestHeader=X-Forwarded-Proto, ${spring.cloud.client.scheme}
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: "*"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: true
+
+spring:
+  cloud:
+    nacos:
+      discovery:
+        server-addr: localhost:8848
+        namespace: public
+        group: DEFAULT_GROUP
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
