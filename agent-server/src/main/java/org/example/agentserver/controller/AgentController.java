@@ -45,6 +45,19 @@ public class AgentController {
         }
     }
     
+    @PostMapping("/review")
+    public ResponseEntity<AgentResponse> reviewContent(
+            @RequestParam @NotBlank(message = "内容不能为空") String content) {
+        
+        AgentResponse response = agentService.reviewContent(content);
+        
+        if ("success".equals(response.getStatus())) {
+            return ResponseEntity.ok(response);
+        } else {
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+    
     @GetMapping("/health")
     public ResponseEntity<String> health() {
         return ResponseEntity.ok("Agent service is running");

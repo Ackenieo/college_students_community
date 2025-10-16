@@ -58,6 +58,12 @@ public class VerifyCodeService {
         }
         return sb.toString();
     }
+    
+    public void clearCode(String email) {
+        String key = buildKey(email);
+        stringRedisTemplate.delete(key);
+        logger.info("清除验证码成功, email={}", email);
+    }
 }
 
 

@@ -59,6 +59,49 @@ public class AgentService {
         }
     }
     
+    @Retry(name = "difyAgent")
+    public AgentResponse reviewContent(String content) {
+        logger.info("处理内容审核请求，内容长度: {}", content.length());
+        
+        // 构建内容审核请求
+        DifyRequest difyRequest = new DifyRequest();
+        difyRequest.setUserId("system");
+        difyRequest.setQuery("请审核以下内容是否包含敏感信息或不适当内容：" + content);
+        difyRequest.setResponseMode("blocking");
+        difyRequest.setUser("system");
+        
+        // 添加审核相关的元数据
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("type", "content_review");
+        metadata.put("timestamp", System.currentTimeMillis());
+        difyRequest.setMetadata(metadata);
+        
+        // 调用Dify服务进行内容审核
+        DifyResponse difyResponse = difyService.chat(difyRequest);
+        
+        // 解析审核结果
+        if (difyResponse != null && difyResponse.getError() == null) {
+            String result = difyResponse.getAnswer() != null ? difyResponse.getAnswer() : difyResponse.getMessage();
+            return parseReviewResult(result);
+        } else {
+            return AgentResponse.error(difyResponse != null ? difyResponse.getError() : "内容审核失败");
+        }
+    }
+    
+    private AgentResponse parseReviewResult(String result) {
+        // 解析AI返回的审核结果
+        if (result.toLowerCase().contains("通过") || result.toLowerCase().contains("approve") || 
+            result.toLowerCase().contains("正常") || result.toLowerCase().contains("safe")) {
+            return AgentResponse.success("APPROVED", "内容审核通过");
+        } else if (result.toLowerCase().contains("拒绝") || result.toLowerCase().contains("reject") ||
+                   result.toLowerCase().contains("敏感") || result.toLowerCase().contains("不当")) {
+            return AgentResponse.error("REJECTED: " + result);
+        } else {
+            // 默认需要人工审核
+            return AgentResponse.success("PENDING", "内容需要人工审核");
+        }
+    }
+    
     public AgentResponse getConversationHistory(String userId, String conversationId) {
         logger.info("获取对话历史，用户ID: {}, 对话ID: {}", userId, conversationId);
         

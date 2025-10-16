@@ -1,7 +1,6 @@
 package org.example.userserver.controller;
 
-import org.example.userserver.dto.CreateUserRequest;
-import org.example.userserver.dto.UserDTO;
+import org.example.userserver.dto.*;
 import org.example.userserver.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -90,6 +89,83 @@ public class UserController {
     public ResponseEntity<Void> updateLastLogin(@PathVariable Long id) {
         userService.updateLastLogin(id);
         return ResponseEntity.ok().build();
+    }
+    
+    // 认证相关接口
+    @PostMapping("/login")
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
+        try {
+            AuthResponse response = userService.login(request);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body("登录失败: " + e.getMessage());
+        }
+    }
+    
+    @PostMapping("/register")
+    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
+        try {
+            UserDTO user = userService.register(request);
+            return ResponseEntity.status(HttpStatus.CREATED).body(user);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("注册失败: " + e.getMessage());
+        }
+    }
+    
+    @PostMapping("/register-with-verification")
+    public ResponseEntity<?> registerWithVerification(
+            @Valid @RequestBody RegisterRequest request,
+            @RequestParam String code) {
+        try {
+            VerifyCodeRequest verifyRequest = new VerifyCodeRequest(request.getEmail(), code);
+            UserDTO user = userService.registerWithVerification(request, verifyRequest);
+            return ResponseEntity.status(HttpStatus.CREATED).body(user);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("注册失败: " + e.getMessage());
+        }
+    }
+    
+    @PostMapping("/send-register-code")
+    public ResponseEntity<?> sendRegisterVerificationCode(@RequestParam String email) {
+        try {
+            userService.sendRegisterVerificationCode(email);
+            return ResponseEntity.ok("验证码已发送");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("发送失败: " + e.getMessage());
+        }
+    }
+    
+    @PostMapping("/send-reset-code")
+    public ResponseEntity<?> sendPasswordResetCode(@RequestParam String email) {
+        try {
+            userService.sendPasswordResetCode(email);
+            return ResponseEntity.ok("验证码已发送");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("发送失败: " + e.getMessage());
+        }
+    }
+    
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@Valid @RequestBody PasswordResetRequest request) {
+        try {
+            userService.resetPassword(request);
+            return ResponseEntity.ok("密码重置成功");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("重置失败: " + e.getMessage());
+        }
+    }
+    
+    @GetMapping("/email/{email}")
+    public ResponseEntity<UserDTO> getUserByEmail(@PathVariable String email) {
+        return userService.getUserByEmail(email)
+                .map(user -> ResponseEntity.ok(user))
+                .orElse(ResponseEntity.notFound().build());
     }
     
     @GetMapping("/health")
