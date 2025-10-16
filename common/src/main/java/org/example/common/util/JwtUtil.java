@@ -4,9 +4,6 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
@@ -16,15 +13,15 @@ import java.util.Map;
 /**
  * JWT工具类
  */
-@Slf4j
-@Component
 public class JwtUtil {
     
-    @Value("${jwt.secret:college-students-secret-key-2024}")
-    private String secret;
+    private final String secret;
+    private final Long expiration;
     
-    @Value("${jwt.expiration:86400000}")
-    private Long expiration;
+    public JwtUtil(String secret, Long expiration) {
+        this.secret = secret;
+        this.expiration = expiration;
+    }
     
     /**
      * 生成JWT令牌
@@ -39,6 +36,18 @@ public class JwtUtil {
      */
     public String generateToken(String username, Map<String, Object> extraClaims) {
         Map<String, Object> claims = new HashMap<>(extraClaims);
+        return createToken(claims, username);
+    }
+    
+    /**
+     * 生成JWT令牌（带用户详细信息）
+     */
+    public String generateToken(Long userId, String username, String email, String role) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("userId", userId);
+        claims.put("username", username);
+        claims.put("email", email);
+        claims.put("role", role);
         return createToken(claims, username);
     }
     
@@ -65,6 +74,22 @@ public class JwtUtil {
      */
     public String getUsernameFromToken(String token) {
         return getClaimFromToken(token, Claims::getSubject);
+    }
+    
+    /**
+     * 从令牌中获取用户ID
+     */
+    public Long getUserIdFromToken(String token) {
+        Claims claims = getAllClaimsFromToken(token);
+        return claims.get("userId", Long.class);
+    }
+    
+    /**
+     * 从令牌中获取用户角色
+     */
+    public String getRoleFromToken(String token) {
+        Claims claims = getAllClaimsFromToken(token);
+        return claims.get("role", String.class);
     }
     
     /**
@@ -110,7 +135,7 @@ public class JwtUtil {
             final String tokenUsername = getUsernameFromToken(token);
             return (username.equals(tokenUsername) && !isTokenExpired(token));
         } catch (Exception e) {
-            log.error("JWT token验证失败: {}", e.getMessage(), e);
+            System.err.println("JWT token验证失败: " + e.getMessage());
             return false;
         }
     }
@@ -124,7 +149,7 @@ public class JwtUtil {
             claims.setIssuedAt(new Date());
             return createToken(claims, claims.getSubject());
         } catch (Exception e) {
-            log.error("JWT token刷新失败: {}", e.getMessage(), e);
+            System.err.println("JWT token刷新失败: " + e.getMessage());
             return null;
         }
     }

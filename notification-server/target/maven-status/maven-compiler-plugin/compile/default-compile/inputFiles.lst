@@ -1,0 +1,13 @@
+C:\Users\staff\college_students_project\notification-server\src\main\java\org\example\notificationserver\controller\NotificationController.java
+C:\Users\staff\college_students_project\notification-server\src\main\java\org\example\notificationserver\config\WebSocketConfig.java
+C:\Users\staff\college_students_project\notification-server\src\main\java\org\example\notificationserver\NotificationServerApplication.java
+C:\Users\staff\college_students_project\notification-server\src\main\java\org\example\notificationserver\service\NotificationService.java
+C:\Users\staff\college_students_project\notification-server\src\main\java\org\example\notificationserver\repository\NotificationRepository.java
+C:\Users\staff\college_students_project\notification-server\src\main\java\org\example\notificationserver\dto\WebSocketMessage.java
+C:\Users\staff\college_students_project\notification-server\src\main\java\org\example\notificationserver\dto\NotificationRequest.java
+C:\Users\staff\college_students_project\notification-server\src\main\java\org\example\notificationserver\service\WebSocketService.java
+C:\Users\staff\college_students_project\notification-server\src\main\java\org\example\notificationserver\service\EmailService.java
+C:\Users\staff\college_students_project\notification-server\src\main\java\org\example\notificationserver\entity\Notification.java
+C:\Users\staff\college_students_project\notification-server\src\main\java\org\example\notificationserver\controller\EmailController.java
+C:\Users\staff\college_students_project\notification-server\src\main\java\org\example\notificationserver\dto\EmailRequest.java
+C:\Users\staff\college_students_project\notification-server\src\main\java\org\example\notificationserver\config\NotificationEmailProperties.java

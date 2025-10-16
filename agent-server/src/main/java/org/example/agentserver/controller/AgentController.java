@@ -1,9 +1,10 @@
 package org.example.agentserver.controller;
 
+import org.example.common.result.Result;
+import org.example.common.result.ResultCode;
 import org.example.agentserver.dto.AgentResponse;
 import org.example.agentserver.service.AgentService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.constraints.NotBlank;
@@ -17,49 +18,58 @@ public class AgentController {
     private AgentService agentService;
     
     @PostMapping("/chat")
-    public ResponseEntity<AgentResponse> chat(
+    public Result<AgentResponse> chat(
             @RequestParam @NotBlank(message = "用户ID不能为空") String userId,
             @RequestParam @NotBlank(message = "查询内容不能为空") String query,
             @RequestParam(required = false) String conversationId) {
         
-        AgentResponse response = agentService.chat(userId, query, conversationId);
-        
-        if ("success".equals(response.getStatus())) {
-            return ResponseEntity.ok(response);
-        } else {
-            return ResponseEntity.badRequest().body(response);
+        try {
+            AgentResponse response = agentService.chat(userId, query, conversationId);
+            if ("success".equals(response.getStatus())) {
+                return Result.success("聊天成功", response);
+            } else {
+                return Result.error(ResultCode.BAD_REQUEST.getCode(), "聊天失败: " + response.getMessage());
+            }
+        } catch (Exception e) {
+            return Result.error(ResultCode.INTERNAL_SERVER_ERROR.getCode(), "服务异常: " + e.getMessage());
         }
     }
     
     @GetMapping("/conversation/{conversationId}")
-    public ResponseEntity<AgentResponse> getConversationHistory(
+    public Result<AgentResponse> getConversationHistory(
             @PathVariable @NotBlank String conversationId,
             @RequestParam @NotBlank String userId) {
         
-        AgentResponse response = agentService.getConversationHistory(userId, conversationId);
-        
-        if ("success".equals(response.getStatus())) {
-            return ResponseEntity.ok(response);
-        } else {
-            return ResponseEntity.badRequest().body(response);
+        try {
+            AgentResponse response = agentService.getConversationHistory(userId, conversationId);
+            if ("success".equals(response.getStatus())) {
+                return Result.success("获取成功", response);
+            } else {
+                return Result.error(ResultCode.BAD_REQUEST.getCode(), "获取失败: " + response.getMessage());
+            }
+        } catch (Exception e) {
+            return Result.error(ResultCode.INTERNAL_SERVER_ERROR.getCode(), "服务异常: " + e.getMessage());
         }
     }
     
     @PostMapping("/review")
-    public ResponseEntity<AgentResponse> reviewContent(
+    public Result<AgentResponse> reviewContent(
             @RequestParam @NotBlank(message = "内容不能为空") String content) {
         
-        AgentResponse response = agentService.reviewContent(content);
-        
-        if ("success".equals(response.getStatus())) {
-            return ResponseEntity.ok(response);
-        } else {
-            return ResponseEntity.badRequest().body(response);
+        try {
+            AgentResponse response = agentService.reviewContent(content);
+            if ("success".equals(response.getStatus())) {
+                return Result.success("内容审核完成", response);
+            } else {
+                return Result.error(ResultCode.BAD_REQUEST.getCode(), "审核失败: " + response.getMessage());
+            }
+        } catch (Exception e) {
+            return Result.error(ResultCode.INTERNAL_SERVER_ERROR.getCode(), "服务异常: " + e.getMessage());
         }
     }
     
     @GetMapping("/health")
-    public ResponseEntity<String> health() {
-        return ResponseEntity.ok("Agent service is running");
+    public Result<String> health() {
+        return Result.success("服务正常", "Agent service is running");
     }
 }

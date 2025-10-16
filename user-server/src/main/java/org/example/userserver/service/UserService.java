@@ -3,7 +3,7 @@ package org.example.userserver.service;
 import org.example.userserver.dto.*;
 import org.example.userserver.entity.User;
 import org.example.userserver.repository.UserRepository;
-import org.example.userserver.util.JwtUtil;
+import org.example.common.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;

@@ -4,6 +4,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.Builder.Default;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
@@ -27,6 +28,7 @@ public class AuthResponse implements Serializable {
     /**
      * 令牌类型
      */
+    @Default
     private String tokenType = "Bearer";
     
     /**

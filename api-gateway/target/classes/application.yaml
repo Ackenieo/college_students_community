@@ -1,0 +1,80 @@
+# 应用服务端口配置
+server:
+  port: 8080
+
+# Spring 相关配置
+spring:
+  application:
+    # 应用名称，用于注册与日志标识
+    name: api-gateway
+  cloud:
+    # Spring Cloud Gateway 路由与过滤器
+    gateway:
+      routes:
+        - id: user-service
+          uri: lb://user-server
+          predicates:
+            - Path=/api/users/**
+          filters:
+            - StripPrefix=2
+        - id: community-service
+          uri: lb://community-server
+          predicates:
+            - Path=/api/community/**
+          filters:
+            - StripPrefix=2
+        - id: agent-service
+          uri: lb://agent-server
+          predicates:
+            - Path=/api/agent/**
+          filters:
+            - StripPrefix=2
+        - id: notification-service
+          uri: lb://notification-server
+          predicates:
+            - Path=/api/notifications/**
+          filters:
+            - StripPrefix=2
+      # 全局过滤器：为请求添加常见头部
+      default-filters:
+        - AddRequestHeader=X-Forwarded-For, ${spring.cloud.client.ip-address}
+        - AddRequestHeader=X-Forwarded-Proto, ${spring.cloud.client.scheme}
+      # CORS 全局配置
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: "*"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: true
+    # 服务注册与发现（Nacos）
+    nacos:
+      discovery:
+        server-addr: localhost:8848
+        namespace: public
+        group: DEFAULT_GROUP
+
+# Actuator 管理端点暴露
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+
+# JWT配置
+jwt:
+  secret: college-students-secret-key-2024
+  expiration: 86400000 # 24小时
+
+# 日志级别配置
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG

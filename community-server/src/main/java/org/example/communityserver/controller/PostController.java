@@ -1,12 +1,12 @@
 package org.example.communityserver.controller;
 
+import org.example.common.result.Result;
+import org.example.common.result.ResultCode;
 import org.example.communityserver.dto.CreatePostRequest;
 import org.example.communityserver.dto.PostDTO;
 import org.example.communityserver.service.PostService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
@@ -20,30 +20,28 @@ public class PostController {
     private PostService postService;
     
     @PostMapping
-    public ResponseEntity<?> createPost(
+    public Result<PostDTO> createPost(
             @RequestHeader("X-User-Id") Long userId,
             @RequestHeader("X-User-Username") String username,
             @RequestHeader("X-User-Email") String email,
             @Valid @RequestBody CreatePostRequest request) {
         try {
             PostDTO post = postService.createPost(userId, username, email, request);
-            return ResponseEntity.status(HttpStatus.CREATED).body(post);
+            return Result.success("帖子创建成功", post);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body("创建帖子失败: " + e.getMessage());
+            return Result.error(ResultCode.BAD_REQUEST.getCode(), "创建帖子失败: " + e.getMessage());
         }
     }
     
     @GetMapping("/{id}")
-    public ResponseEntity<?> getPostById(
+    public Result<PostDTO> getPostById(
             @PathVariable String id,
             @RequestHeader(value = "X-User-Id", required = false) Long currentUserId) {
         try {
             PostDTO post = postService.getPostById(id, currentUserId);
-            return ResponseEntity.ok(post);
+            return Result.success("查询成功", post);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("帖子不存在: " + e.getMessage());
+            return Result.error(ResultCode.POST_NOT_FOUND.getCode(), "帖子不存在: " + e.getMessage());
         }
     }
     
