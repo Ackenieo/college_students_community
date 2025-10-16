@@ -1,10 +1,10 @@
 package org.example.communityserver.controller;
 
+import org.example.common.result.Result;
+import org.example.common.result.ResultCode;
 import org.example.communityserver.entity.Like;
 import org.example.communityserver.service.LikeService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -19,7 +19,7 @@ public class LikeController {
     private LikeService likeService;
     
     @PostMapping("/toggle")
-    public ResponseEntity<?> toggleLike(
+    public Result<Map<String, Object>> toggleLike(
             @RequestHeader("X-User-Id") Long userId,
             @RequestParam String targetId,
             @RequestParam String targetType) {
@@ -31,15 +31,14 @@ public class LikeController {
             response.put("isLiked", isLiked);
             response.put("likeCount", likeService.getLikeCount(targetId, type));
             
-            return ResponseEntity.ok(response);
+            return Result.success("操作成功", response);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body("操作失败: " + e.getMessage());
+            return Result.error(ResultCode.BAD_REQUEST.getCode(), "操作失败: " + e.getMessage());
         }
     }
     
     @GetMapping("/status")
-    public ResponseEntity<?> getLikeStatus(
+    public Result<Map<String, Object>> getLikeStatus(
             @RequestHeader("X-User-Id") Long userId,
             @RequestParam String targetId,
             @RequestParam String targetType) {
@@ -52,10 +51,9 @@ public class LikeController {
             response.put("isLiked", isLiked);
             response.put("likeCount", likeCount);
             
-            return ResponseEntity.ok(response);
+            return Result.success("获取状态成功", response);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body("获取状态失败: " + e.getMessage());
+            return Result.error(ResultCode.BAD_REQUEST.getCode(), "获取状态失败: " + e.getMessage());
         }
     }
 }
