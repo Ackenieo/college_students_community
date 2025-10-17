@@ -2,6 +2,7 @@
 <project version="4">
   <component name="CompilerConfiguration">
     <annotationProcessing>
+      <profile default="true" name="Default" enabled="true" />
       <profile name="Maven default annotation processors profile" enabled="true">
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
@@ -18,26 +19,17 @@
         <module name="community-server" />
         <module name="agent-server" />
         <module name="common" />
-        <module name="user-server" />
         <module name="notification-server" />
+        <module name="user-server" />
       </profile>
     </annotationProcessing>
-    <bytecodeTargetLevel>
-      <module name="config-server" target="17" />
-      <module name="course-server" target="17" />
-      <module name="eureka-server" target="17" />
-    </bytecodeTargetLevel>
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
       <module name="agent-server" options="-parameters" />
       <module name="api-gateway" options="-parameters" />
-      <module name="college_students_project" options="" />
       <module name="common" options="-parameters" />
       <module name="community-server" options="-parameters" />
-      <module name="config-server" options="-parameters" />
-      <module name="course-server" options="-parameters" />
-      <module name="eureka-server" options="-parameters" />
       <module name="notification-server" options="-parameters" />
       <module name="user-server" options="-parameters" />
     </option>

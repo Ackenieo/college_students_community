@@ -7,6 +7,9 @@ import org.example.userserver.entity.User;
 
 import java.time.LocalDateTime;
 
+/**
+ * 服务内用户数据传输对象
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

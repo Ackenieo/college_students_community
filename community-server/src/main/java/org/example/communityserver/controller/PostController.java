@@ -11,14 +11,26 @@ import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
 
+/**
+ * 帖子管理控制器
+ * 提供帖子的创建、查询、更新、删除等功能
+ */
 @RestController
 @RequestMapping("/posts")
 @CrossOrigin(origins = "*")
 public class PostController {
-    
+
     @Autowired
     private PostService postService;
-    
+
+    /**
+     * 创建新帖子
+     * @param userId 用户ID（从请求头获取）
+     * @param username 用户名（从请求头获取）
+     * @param email 用户邮箱（从请求头获取）
+     * @param request 帖子创建请求，包含标题、内容、类型等信息
+     * @return 创建成功的帖子信息
+     */
     @PostMapping
     public Result<PostDTO> createPost(
             @RequestHeader("X-User-Id") Long userId,
@@ -33,6 +45,12 @@ public class PostController {
         }
     }
     
+    /**
+     * 根据ID获取帖子详情
+     * @param id 帖子ID
+     * @param currentUserId 当前用户ID（可选，用于判断是否已点赞/收藏）
+     * @return 帖子详细信息
+     */
     @GetMapping("/{id}")
     public Result<PostDTO> getPostById(
             @PathVariable String id,
@@ -45,6 +63,13 @@ public class PostController {
         }
     }
     
+    /**
+     * 获取已审核通过的帖子列表（分页）
+     * @param page 页码（从0开始）
+     * @param size 每页大小
+     * @param currentUserId 当前用户ID（可选，用于判断点赞/收藏状态）
+     * @return 分页的帖子列表
+     */
     @GetMapping
     public Result<Page<PostDTO>> getApprovedPosts(
             @RequestParam(defaultValue = "0") int page,
@@ -58,6 +83,14 @@ public class PostController {
         }
     }
     
+    /**
+     * 获取指定用户的帖子列表
+     * @param userId 用户ID
+     * @param page 页码（从0开始）
+     * @param size 每页大小
+     * @param currentUserId 当前用户ID（可选，用于判断点赞/收藏状态）
+     * @return 分页的用户帖子列表
+     */
     @GetMapping("/user/{userId}")
     public Result<Page<PostDTO>> getUserPosts(
             @PathVariable Long userId,
@@ -72,6 +105,14 @@ public class PostController {
         }
     }
     
+    /**
+     * 搜索帖子
+     * @param keyword 搜索关键词（标题或内容）
+     * @param page 页码（从0开始）
+     * @param size 每页大小
+     * @param currentUserId 当前用户ID（可选，用于判断点赞/收藏状态）
+     * @return 分页的搜索结果
+     */
     @GetMapping("/search")
     public Result<Page<PostDTO>> searchPosts(
             @RequestParam String keyword,
@@ -86,6 +127,13 @@ public class PostController {
         }
     }
     
+    /**
+     * 获取热门帖子列表（按点赞数和评论数排序）
+     * @param page 页码（从0开始）
+     * @param size 每页大小
+     * @param currentUserId 当前用户ID（可选，用于判断点赞/收藏状态）
+     * @return 分页的热门帖子列表
+     */
     @GetMapping("/hot")
     public Result<Page<PostDTO>> getHotPosts(
             @RequestParam(defaultValue = "0") int page,
@@ -99,6 +147,13 @@ public class PostController {
         }
     }
     
+    /**
+     * 更新帖子内容（仅作者可操作）
+     * @param id 帖子ID
+     * @param userId 用户ID（从请求头获取，用于权限验证）
+     * @param request 更新请求，包含新的帖子内容
+     * @return 更新后的帖子信息
+     */
     @PutMapping("/{id}")
     public Result<PostDTO> updatePost(
             @PathVariable String id,
@@ -112,6 +167,12 @@ public class PostController {
         }
     }
     
+    /**
+     * 删除帖子（仅作者可操作）
+     * @param id 帖子ID
+     * @param userId 用户ID（从请求头获取，用于权限验证）
+     * @return 删除结果
+     */
     @DeleteMapping("/{id}")
     public Result<String> deletePost(
             @PathVariable String id,
@@ -124,6 +185,10 @@ public class PostController {
         }
     }
     
+    /**
+     * 健康检查接口
+     * @return 服务状态
+     */
     @GetMapping("/health")
     public Result<String> health() {
         return Result.success("服务正常", "Community service is running");

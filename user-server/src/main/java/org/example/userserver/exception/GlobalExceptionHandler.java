@@ -1,10 +1,9 @@
 package org.example.userserver.exception;
 
-import org.example.userserver.dto.ApiResponse;
+import org.example.common.result.Result;
+import org.example.common.result.ResultCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -20,28 +19,25 @@ public class GlobalExceptionHandler {
     private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
     
     @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<ApiResponse<Object>> handleRuntimeException(RuntimeException e) {
+    public Result<Object> handleRuntimeException(RuntimeException e) {
         logger.error("运行时异常: ", e);
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error("RUNTIME_ERROR", e.getMessage()));
+        return Result.error(ResultCode.INTERNAL_SERVER_ERROR.getCode(), "系统内部错误: " + e.getMessage());
     }
     
     @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ApiResponse<Object>> handleIllegalArgumentException(IllegalArgumentException e) {
+    public Result<Object> handleIllegalArgumentException(IllegalArgumentException e) {
         logger.warn("参数异常: ", e);
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.error("INVALID_ARGUMENT", e.getMessage()));
+        return Result.error(ResultCode.BAD_REQUEST.getCode(), "参数错误: " + e.getMessage());
     }
     
     @ExceptionHandler(IllegalStateException.class)
-    public ResponseEntity<ApiResponse<Object>> handleIllegalStateException(IllegalStateException e) {
+    public Result<Object> handleIllegalStateException(IllegalStateException e) {
         logger.warn("状态异常: ", e);
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.error("INVALID_STATE", e.getMessage()));
+        return Result.error(ResultCode.BAD_REQUEST.getCode(), "状态错误: " + e.getMessage());
     }
     
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiResponse<Object>> handleValidationExceptions(MethodArgumentNotValidException ex) {
+    public Result<Map<String, String>> handleValidationExceptions(MethodArgumentNotValidException ex) {
         Map<String, String> errors = new HashMap<>();
         ex.getBindingResult().getAllErrors().forEach((error) -> {
             String fieldName = ((FieldError) error).getField();
@@ -50,12 +46,16 @@ public class GlobalExceptionHandler {
         });
         
         logger.warn("参数验证失败: {}", errors);
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.error("VALIDATION_ERROR", "参数验证失败", errors));
+        Result<Map<String, String>> result = new Result<>();
+        result.setCode(ResultCode.BAD_REQUEST.getCode());
+        result.setMessage("参数验证失败");
+        result.setData(errors);
+        result.setTimestamp(System.currentTimeMillis());
+        return result;
     }
     
     @ExceptionHandler(BindException.class)
-    public ResponseEntity<ApiResponse<Object>> handleBindException(BindException ex) {
+    public Result<Map<String, String>> handleBindException(BindException ex) {
         Map<String, String> errors = new HashMap<>();
         ex.getBindingResult().getAllErrors().forEach((error) -> {
             String fieldName = ((FieldError) error).getField();
@@ -64,14 +64,17 @@ public class GlobalExceptionHandler {
         });
         
         logger.warn("绑定异常: {}", errors);
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.error("BIND_ERROR", "数据绑定失败", errors));
+        Result<Map<String, String>> result = new Result<>();
+        result.setCode(ResultCode.BAD_REQUEST.getCode());
+        result.setMessage("数据绑定失败");
+        result.setData(errors);
+        result.setTimestamp(System.currentTimeMillis());
+        return result;
     }
     
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiResponse<Object>> handleGenericException(Exception e) {
+    public Result<Object> handleGenericException(Exception e) {
         logger.error("未知异常: ", e);
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error("INTERNAL_ERROR", "系统内部错误"));
+        return Result.error(ResultCode.INTERNAL_SERVER_ERROR.getCode(), "系统内部错误");
     }
 }

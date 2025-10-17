@@ -1,6 +1,7 @@
 package org.example.userserver.service;
 
 import org.example.userserver.dto.*;
+import org.example.userserver.vo.*;
 import org.example.userserver.entity.User;
 import org.example.userserver.repository.UserRepository;
 import org.example.common.util.JwtUtil;
@@ -36,135 +37,14 @@ public class UserService {
     private VerifyCodeService verifyCodeService;
     
     private static final String USER_CACHE_PREFIX = "user:";
-    
-    public UserDTO createUser(CreateUserRequest request) {
-        // 检查用户名和邮箱是否已存在
-        if (userRepository.existsByUsername(request.getUsername())) {
-            throw new RuntimeException("用户名已存在");
-        }
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("邮箱已存在");
-        }
-        
-        User user = new User();
-        user.setUsername(request.getUsername());
-        user.setEmail(request.getEmail());
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setFullName(request.getFullName());
-        user.setPhone(request.getPhone());
-        user.setRole(User.UserRole.valueOf(request.getRole()));
-        user.setStatus(User.UserStatus.ACTIVE);
-        
-        User savedUser = userRepository.save(user);
-        
-        // 缓存用户信息
-        cacheUser(savedUser);
-        
-        return UserDTO.fromEntity(savedUser);
-    }
-    
-    public Optional<UserDTO> getUserById(Long id) {
-        // 先从缓存获取
-        User cachedUser = (User) redisTemplate.opsForValue().get(USER_CACHE_PREFIX + id);
-        if (cachedUser != null) {
-            return Optional.of(UserDTO.fromEntity(cachedUser));
-        }
-        
-        // 缓存未命中，从数据库获取
-        Optional<User> userOpt = userRepository.findById(id);
-        if (userOpt.isPresent()) {
-            User user = userOpt.get();
-            cacheUser(user);
-            return Optional.of(UserDTO.fromEntity(user));
-        }
-        
-        return Optional.empty();
-    }
-    
-    public Optional<UserDTO> getUserByUsername(String username) {
-        Optional<User> userOpt = userRepository.findByUsername(username);
-        return userOpt.map(UserDTO::fromEntity);
-    }
-    
-    public List<UserDTO> getAllUsers() {
-        List<User> users = userRepository.findAll();
-        return users.stream()
-                .map(UserDTO::fromEntity)
-                .collect(Collectors.toList());
-    }
-    
-    public List<UserDTO> getUsersByRole(String role) {
-        List<User> users = userRepository.findByRole(User.UserRole.valueOf(role));
-        return users.stream()
-                .map(UserDTO::fromEntity)
-                .collect(Collectors.toList());
-    }
-    
-    public List<UserDTO> searchUsers(String keyword) {
-        List<User> users = userRepository.findByKeyword(keyword);
-        return users.stream()
-                .map(UserDTO::fromEntity)
-                .collect(Collectors.toList());
-    }
-    
-    public UserDTO updateUser(Long id, CreateUserRequest request) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("用户不存在"));
-        
-        // 检查用户名和邮箱是否被其他用户使用
-        if (!user.getUsername().equals(request.getUsername()) && 
-            userRepository.existsByUsername(request.getUsername())) {
-            throw new RuntimeException("用户名已存在");
-        }
-        if (!user.getEmail().equals(request.getEmail()) && 
-            userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("邮箱已存在");
-        }
-        
-        user.setUsername(request.getUsername());
-        user.setEmail(request.getEmail());
-        if (request.getPassword() != null && !request.getPassword().isEmpty()) {
-            user.setPassword(passwordEncoder.encode(request.getPassword()));
-        }
-        user.setFullName(request.getFullName());
-        user.setPhone(request.getPhone());
-        user.setRole(User.UserRole.valueOf(request.getRole()));
-        
-        User updatedUser = userRepository.save(user);
-        
-        // 更新缓存
-        cacheUser(updatedUser);
-        
-        return UserDTO.fromEntity(updatedUser);
-    }
-    
-    public void deleteUser(Long id) {
-        if (!userRepository.existsById(id)) {
-            throw new RuntimeException("用户不存在");
-        }
-        
-        userRepository.deleteById(id);
-        
-        // 删除缓存
-        redisTemplate.delete(USER_CACHE_PREFIX + id);
-    }
-    
-    public void updateLastLogin(Long id) {
-        Optional<User> userOpt = userRepository.findById(id);
-        if (userOpt.isPresent()) {
-            User user = userOpt.get();
-            user.setLastLogin(LocalDateTime.now());
-            userRepository.save(user);
-            cacheUser(user);
-        }
-    }
+
     
     private void cacheUser(User user) {
         redisTemplate.opsForValue().set(USER_CACHE_PREFIX + user.getId(), user);
     }
     
     // 认证相关方法
-    public AuthResponse login(LoginRequest request) {
+    public AuthResponseVO login(LoginRequestVO request) {
         // 根据邮箱查找用户
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("用户不存在"));
@@ -195,7 +75,7 @@ public class UserService {
         // 计算token过期时间
         LocalDateTime expiresAt = LocalDateTime.now().plusHours(24);
         
-        return AuthResponse.success(
+        return AuthResponseVO.success(
                 token, 
                 user.getId(), 
                 user.getUsername(), 
@@ -205,7 +85,13 @@ public class UserService {
         );
     }
     
-    public UserDTO register(RegisterRequest request) {
+    
+    public UserDTO register(RegisterRequestVO request, VerifyCodeRequestVO verifyRequest) {
+        // 验证邮箱验证码
+        if (!verifyCodeService.verifyCode(request.getEmail(), verifyRequest.getCode())) {
+            throw new RuntimeException("验证码错误或已过期");
+        }
+        
         // 检查用户名和邮箱是否已存在
         if (userRepository.existsByUsername(request.getUsername())) {
             throw new RuntimeException("用户名已存在");
@@ -214,6 +100,7 @@ public class UserService {
             throw new RuntimeException("邮箱已存在");
         }
         
+        // 创建新用户
         User user = new User();
         user.setUsername(request.getUsername());
         user.setEmail(request.getEmail());
@@ -223,25 +110,16 @@ public class UserService {
         user.setRole(User.UserRole.STUDENT);
         user.setStatus(User.UserStatus.ACTIVE);
         
+        // 保存到数据库
         User savedUser = userRepository.save(user);
+        
+        // 缓存用户信息
         cacheUser(savedUser);
-        
-        return UserDTO.fromEntity(savedUser);
-    }
-    
-    public UserDTO registerWithVerification(RegisterRequest request, VerifyCodeRequest verifyRequest) {
-        // 验证邮箱验证码
-        if (!verifyCodeService.verifyCode(request.getEmail(), verifyRequest.getCode())) {
-            throw new RuntimeException("验证码错误或已过期");
-        }
-        
-        // 注册用户
-        UserDTO user = register(request);
         
         // 清除验证码
         verifyCodeService.clearCode(request.getEmail());
         
-        return user;
+        return UserDTO.fromEntity(savedUser);
     }
     
     public void sendRegisterVerificationCode(String email) {
@@ -272,7 +150,7 @@ public class UserService {
         System.out.println("密码重置验证码: " + code + " (邮箱: " + email + ")");
     }
     
-    public void resetPassword(PasswordResetRequest request) {
+    public void resetPassword(PasswordResetRequestVO request) {
         // 验证邮箱验证码
         if (!verifyCodeService.verifyCode(request.getEmail(), request.getCode())) {
             throw new RuntimeException("验证码错误或已过期");
@@ -290,9 +168,5 @@ public class UserService {
         // 清除验证码
         verifyCodeService.clearCode(request.getEmail());
     }
-    
-    public Optional<UserDTO> getUserByEmail(String email) {
-        Optional<User> userOpt = userRepository.findByEmail(email);
-        return userOpt.map(UserDTO::fromEntity);
-    }
+
 }

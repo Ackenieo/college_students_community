@@ -36,4 +36,13 @@ public class AgentResponse {
         response.setTimestamp(LocalDateTime.now());
         return response;
     }
+    
+    /**
+     * 获取错误消息
+     * 兼容性方法，返回error字段的值
+     * @return 错误消息
+     */
+    public String getMessage() {
+        return this.error;
+    }
 }

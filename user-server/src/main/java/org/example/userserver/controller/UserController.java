@@ -3,6 +3,7 @@ package org.example.userserver.controller;
 import org.example.common.result.Result;
 import org.example.common.result.ResultCode;
 import org.example.userserver.dto.*;
+import org.example.userserver.vo.*;
 import org.example.userserver.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -10,125 +11,62 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import java.util.List;
 
+/**
+ * 用户管理控制器
+ * 提供用户注册、登录、信息管理等功能
+ */
 @RestController
 @RequestMapping("/users")
 @CrossOrigin(origins = "*")
 public class UserController {
-    
+
     @Autowired
     private UserService userService;
+
     
-    @PostMapping
-    public Result<UserDTO> createUser(@Valid @RequestBody CreateUserRequest request) {
-        try {
-            UserDTO user = userService.createUser(request);
-            return Result.success("用户创建成功", user);
-        } catch (Exception e) {
-            return Result.error(ResultCode.BAD_REQUEST.getCode(), "用户创建失败: " + e.getMessage());
-        }
-    }
+    // ==================== 用户认证接口 ====================
     
-    @GetMapping("/{id}")
-    public Result<UserDTO> getUserById(@PathVariable Long id) {
-        return userService.getUserById(id)
-                .map(user -> Result.success("查询成功", user))
-                .orElse(Result.error(ResultCode.USER_NOT_FOUND));
-    }
-    
-    @GetMapping("/username/{username}")
-    public Result<UserDTO> getUserByUsername(@PathVariable String username) {
-        return userService.getUserByUsername(username)
-                .map(user -> Result.success("查询成功", user))
-                .orElse(Result.error(ResultCode.USER_NOT_FOUND));
-    }
-    
-    @GetMapping
-    public Result<List<UserDTO>> getAllUsers() {
-        List<UserDTO> users = userService.getAllUsers();
-        return Result.success("查询成功", users);
-    }
-    
-    @GetMapping("/role/{role}")
-    public Result<List<UserDTO>> getUsersByRole(@PathVariable String role) {
-        try {
-            List<UserDTO> users = userService.getUsersByRole(role);
-            return Result.success("查询成功", users);
-        } catch (Exception e) {
-            return Result.error(ResultCode.BAD_REQUEST.getCode(), "查询失败: " + e.getMessage());
-        }
-    }
-    
-    @GetMapping("/search")
-    public Result<List<UserDTO>> searchUsers(@RequestParam String keyword) {
-        List<UserDTO> users = userService.searchUsers(keyword);
-        return Result.success("搜索成功", users);
-    }
-    
-    @PutMapping("/{id}")
-    public Result<UserDTO> updateUser(@PathVariable Long id, 
-                                            @Valid @RequestBody CreateUserRequest request) {
-        try {
-            UserDTO user = userService.updateUser(id, request);
-            return Result.success("用户更新成功", user);
-        } catch (Exception e) {
-            return Result.error(ResultCode.BAD_REQUEST.getCode(), "用户更新失败: " + e.getMessage());
-        }
-    }
-    
-    @DeleteMapping("/{id}")
-    public Result<Void> deleteUser(@PathVariable Long id) {
-        try {
-            userService.deleteUser(id);
-            return Result.success("用户删除成功", null);
-        } catch (Exception e) {
-            return Result.error(ResultCode.USER_NOT_FOUND.getCode(), "用户删除失败: " + e.getMessage());
-        }
-    }
-    
-    @PutMapping("/{id}/login")
-    public Result<Void> updateLastLogin(@PathVariable Long id) {
-        try {
-            userService.updateLastLogin(id);
-            return Result.success("登录时间更新成功", null);
-        } catch (Exception e) {
-            return Result.error(ResultCode.BAD_REQUEST.getCode(), "更新失败: " + e.getMessage());
-        }
-    }
-    
-    // 认证相关接口
+    /**
+     * 用户登录
+     * @param request 登录请求，包含用户名/邮箱和密码
+     * @return 登录响应，包含JWT token和用户信息
+     */
     @PostMapping("/login")
-    public Result<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
+    public Result<AuthResponseVO> login(@Valid @RequestBody LoginRequestVO request) {
         try {
-            AuthResponse response = userService.login(request);
+            AuthResponseVO response = userService.login(request);
             return Result.success("登录成功", response);
         } catch (Exception e) {
             return Result.error(ResultCode.INVALID_CREDENTIALS.getCode(), "登录失败: " + e.getMessage());
         }
     }
     
-    @PostMapping("/register")
-    public Result<UserDTO> register(@Valid @RequestBody RegisterRequest request) {
-        try {
-            UserDTO user = userService.register(request);
-            return Result.success("注册成功", user);
-        } catch (Exception e) {
-            return Result.error(ResultCode.USER_ALREADY_EXISTS.getCode(), "注册失败: " + e.getMessage());
-        }
-    }
+    // ==================== 用户注册接口 ====================
     
-    @PostMapping("/register-with-verification")
-    public Result<UserDTO> registerWithVerification(
-            @Valid @RequestBody RegisterRequest request,
+    /**
+     * 用户注册（邮箱验证码）
+     * @param request 注册请求，包含用户名、邮箱、密码等信息
+     * @param code 邮箱验证码
+     * @return 注册成功的用户信息
+     */
+    @PostMapping("/register")
+    public Result<UserDTO> register(
+            @Valid @RequestBody RegisterRequestVO request,
             @RequestParam String code) {
         try {
-            VerifyCodeRequest verifyRequest = new VerifyCodeRequest(request.getEmail(), code);
-            UserDTO user = userService.registerWithVerification(request, verifyRequest);
+            VerifyCodeRequestVO verifyRequest = new VerifyCodeRequestVO(request.getEmail(), code);
+            UserDTO user = userService.register(request, verifyRequest);
             return Result.success("注册成功", user);
         } catch (Exception e) {
             return Result.error(ResultCode.VERIFICATION_CODE_INVALID.getCode(), "注册失败: " + e.getMessage());
         }
     }
     
+    /**
+     * 发送注册验证码
+     * @param email 用户邮箱
+     * @return 发送结果
+     */
     @PostMapping("/send-register-code")
     public Result<String> sendRegisterVerificationCode(@RequestParam String email) {
         try {
@@ -139,6 +77,11 @@ public class UserController {
         }
     }
     
+    /**
+     * 发送密码重置验证码
+     * @param email 用户邮箱
+     * @return 发送结果
+     */
     @PostMapping("/send-reset-code")
     public Result<String> sendPasswordResetCode(@RequestParam String email) {
         try {
@@ -149,8 +92,13 @@ public class UserController {
         }
     }
     
+    /**
+     * 重置密码
+     * @param request 密码重置请求，包含邮箱、验证码和新密码
+     * @return 重置结果
+     */
     @PostMapping("/reset-password")
-    public Result<String> resetPassword(@Valid @RequestBody PasswordResetRequest request) {
+    public Result<String> resetPassword(@Valid @RequestBody PasswordResetRequestVO request) {
         try {
             userService.resetPassword(request);
             return Result.success("密码重置成功", "密码重置成功，请使用新密码登录");
@@ -159,15 +107,5 @@ public class UserController {
         }
     }
     
-    @GetMapping("/email/{email}")
-    public Result<UserDTO> getUserByEmail(@PathVariable String email) {
-        return userService.getUserByEmail(email)
-                .map(user -> Result.success("查询成功", user))
-                .orElse(Result.error(ResultCode.USER_NOT_FOUND));
-    }
-    
-    @GetMapping("/health")
-    public Result<String> health() {
-        return Result.success("服务正常", "User service is running");
-    }
+
 }
