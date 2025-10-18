@@ -1,0 +1,32 @@
+# 应用服务端口配置
+server:
+  port: 8888
+
+# Spring 相关配置
+spring:
+  application:
+    # 应用名称
+    name: config-server
+  cloud:
+    # 配置中心（Git 与本地）
+    config:
+      server:
+        git:
+          # 配置仓库地址
+          uri: https://github.com/your-username/college-students-config.git
+          clone-on-start: true
+        native:
+          # 本地配置搜索路径
+          search-locations: classpath:/config
+
+  # 服务注册与发现（Nacos）
+    nacos:
+      discovery:
+        server-addr: localhost:8848
+        namespace: public
+        group: DEFAULT_GROUP
+
+# 日志级别
+logging:
+  level:
+    org.springframework.cloud.config: DEBUG
