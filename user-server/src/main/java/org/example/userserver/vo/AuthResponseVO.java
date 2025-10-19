@@ -5,6 +5,7 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 /**
  * 前端登录响应对象
@@ -20,7 +21,8 @@ public class AuthResponseVO {
     private String username;
     private String email;
     private String role;
-    private LocalDateTime expiresAt;
+    
+    private String expiresAt;
     
     public static AuthResponseVO success(String token, Long userId, String username, 
                                        String email, String role, LocalDateTime expiresAt) {
@@ -30,7 +32,9 @@ public class AuthResponseVO {
         response.setUsername(username);
         response.setEmail(email);
         response.setRole(role);
-        response.setExpiresAt(expiresAt);
+        // 转换 LocalDateTime 为 String
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        response.setExpiresAt(expiresAt != null ? expiresAt.format(formatter) : null);
         return response;
     }
 }

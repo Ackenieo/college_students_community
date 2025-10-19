@@ -5,7 +5,7 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import org.example.userserver.entity.User;
 
-import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 /**
  * 服务内用户数据传输对象
@@ -22,8 +22,9 @@ public class UserDTO {
     private String phone;
     private User.UserRole role;
     private User.UserStatus status;
-    private LocalDateTime createdAt;
-    private LocalDateTime lastLogin;
+    
+    private String createdAt;
+    private String lastLogin;
     
     public static UserDTO fromEntity(User user) {
         UserDTO dto = new UserDTO();
@@ -34,8 +35,12 @@ public class UserDTO {
         dto.setPhone(user.getPhone());
         dto.setRole(user.getRole());
         dto.setStatus(user.getStatus());
-        dto.setCreatedAt(user.getCreatedAt());
-        dto.setLastLogin(user.getLastLogin());
+        
+        // 转换 LocalDateTime 为 String
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        dto.setCreatedAt(user.getCreatedAt() != null ? user.getCreatedAt().format(formatter) : null);
+        dto.setLastLogin(user.getLastLogin() != null ? user.getLastLogin().format(formatter) : null);
+        
         return dto;
     }
 }

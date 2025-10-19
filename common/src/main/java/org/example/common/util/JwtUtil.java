@@ -58,6 +58,7 @@ public class JwtUtil {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + expiration);
         
+        // 确保密钥长度足够支持 HS512 算法（至少 512 位）
         SecretKey key = Keys.hmacShaKeyFor(secret.getBytes());
         
         return Jwts.builder()
@@ -65,7 +66,7 @@ public class JwtUtil {
                 .setSubject(subject)
                 .setIssuedAt(now)
                 .setExpiration(expiryDate)
-                .signWith(key, SignatureAlgorithm.HS512)
+                .signWith(key) // 让 JWT 库自动选择合适的算法
                 .compact();
     }
     

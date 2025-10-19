@@ -36,11 +36,16 @@ public class UserService {
     @Autowired
     private VerifyCodeService verifyCodeService;
     
+    @Autowired
+    private EmailService emailService;
+    
     private static final String USER_CACHE_PREFIX = "user:";
 
     
     private void cacheUser(User user) {
-        redisTemplate.opsForValue().set(USER_CACHE_PREFIX + user.getId(), user);
+        // 将 User 转换为 UserDTO 再缓存，避免 LocalDateTime 序列化问题
+        UserDTO userDTO = UserDTO.fromEntity(user);
+        redisTemplate.opsForValue().set(USER_CACHE_PREFIX + user.getId(), userDTO);
     }
     
     // 认证相关方法
@@ -129,11 +134,13 @@ public class UserService {
         }
         
         // 生成并存储验证码
-        String code = verifyCodeService.generateAndStoreCode(email, Duration.ofMinutes(10));
+        String code = verifyCodeService.generateAndStoreCode(email, Duration.ofMinutes(5));
         
-        // TODO: 发送邮件通知
-        // 这里应该调用通知服务发送验证码邮件
-        System.out.println("注册验证码: " + code + " (邮箱: " + email + ")");
+        // 发送验证码邮件
+        boolean emailSent = emailService.sendVerificationCode(email, code);
+        if (!emailSent) {
+            throw new RuntimeException("验证码邮件发送失败，请稍后重试");
+        }
     }
     
     public void sendPasswordResetCode(String email) {
@@ -143,11 +150,13 @@ public class UserService {
         }
         
         // 生成并存储验证码
-        String code = verifyCodeService.generateAndStoreCode(email, Duration.ofMinutes(10));
+        String code = verifyCodeService.generateAndStoreCode(email, Duration.ofMinutes(5));
         
-        // TODO: 发送邮件通知
-        // 这里应该调用通知服务发送密码重置验证码邮件
-        System.out.println("密码重置验证码: " + code + " (邮箱: " + email + ")");
+        // 发送验证码邮件
+        boolean emailSent = emailService.sendVerificationCode(email, code);
+        if (!emailSent) {
+            throw new RuntimeException("验证码邮件发送失败，请稍后重试");
+        }
     }
     
     public void resetPassword(PasswordResetRequestVO request) {
