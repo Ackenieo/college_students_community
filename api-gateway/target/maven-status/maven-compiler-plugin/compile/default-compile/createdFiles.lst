@@ -1,0 +1,2 @@
+org\example\apigateway\ApiGatewayApplication.class
+org\example\apigateway\security\JwtAuthenticationFilter.class
