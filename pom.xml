@@ -62,7 +62,7 @@
             <dependency>
                 <groupId>org.mybatis.spring.boot</groupId>
                 <artifactId>mybatis-spring-boot-starter</artifactId>
-                <version>${mybatis-spring-boot.version}</version>
+                <version>3.0.4</version>
             </dependency>
             
             <!-- MySQL -->
@@ -85,6 +85,8 @@
                 <artifactId>resilience4j-spring-boot3</artifactId>
                 <version>${resilience4j.version}</version>
             </dependency>
+
+
             
         </dependencies>
     </dependencyManagement>

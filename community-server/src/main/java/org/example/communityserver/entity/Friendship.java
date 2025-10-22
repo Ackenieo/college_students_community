@@ -1,5 +1,6 @@
 package org.example.communityserver.entity;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
@@ -19,19 +20,26 @@ import java.time.LocalDateTime;
 @CompoundIndexes({
     @CompoundIndex(name = "user_friend_idx", def = "{'userId': 1, 'friendId': 1}", unique = true)
 })
+@Schema(description = "好友关系实体")
 public class Friendship {
-    
+
     @Id
+    @Schema(description = "好友关系ID")
     private String id;
-    
+
+    @Schema(description = "用户ID")
     private Long userId;
-    
+
+    @Schema(description = "好友ID")
     private Long friendId;
-    
+
+    @Schema(description = "好友关系状态")
     private FriendshipStatus status = FriendshipStatus.PENDING;
-    
+
+    @Schema(description = "创建时间")
     private LocalDateTime createdAt;
-    
+
+    @Schema(description = "更新时间")
     private LocalDateTime updatedAt;
     
     @PrePersist

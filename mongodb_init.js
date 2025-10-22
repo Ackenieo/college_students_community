@@ -4,7 +4,7 @@
 // =============================================
 
 // 创建数据库
-db = db.getSiblingDB('college_students_community');
+db = db.getSiblingDB('college_community');
 
 // =============================================
 // 创建集合和索引
@@ -379,18 +379,6 @@ function createBackup() {
     return backupName;
 }
 
-// =============================================
-// 性能优化设置
-// =============================================
-
-// 设置读写关注级别
-db.runCommand({
-    setDefaultRWConcern: {
-        defaultReadConcern: { level: "majority" },
-        defaultWriteConcern: { w: "majority", j: true }
-    }
-});
-
 // 创建数据库用户
 db.createUser({
     user: "college_app",
@@ -426,3 +414,16 @@ db.getCollectionNames().forEach(function(name) {
 });
 
 print("初始化脚本执行完成！");
+
+// =============================================
+// 性能优化设置   如果是在单节点模式下不需要配置
+// =============================================
+
+// // 设置读写关注级别
+// use admin
+// db.runCommand({
+//     setDefaultRWConcern: {
+//         defaultReadConcern: { level: "majority" },
+//         defaultWriteConcern: { w: "majority", j: true }
+//     }
+// });

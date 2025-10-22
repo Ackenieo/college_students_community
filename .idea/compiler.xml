@@ -17,8 +17,8 @@
           <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.30/lombok-1.18.30.jar" />
         </processorPath>
         <module name="community-server" />
-        <module name="agent-server" />
         <module name="common" />
+        <module name="agent-server" />
         <module name="notification-server" />
         <module name="user-server" />
       </profile>

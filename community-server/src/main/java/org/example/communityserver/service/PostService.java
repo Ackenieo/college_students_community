@@ -142,6 +142,7 @@ public class PostService {
     private void setUserInteractionStatus(PostDTO dto, Long currentUserId) {
         // TODO: 实现用户交互状态设置
         // 检查当前用户是否已点赞、收藏该帖子
+
         dto.setIsLiked(false);
         dto.setIsFavorited(false);
     }
