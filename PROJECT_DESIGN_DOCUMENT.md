@@ -146,9 +146,47 @@ sequenceDiagram
 #### 数据库表操作
 - content_reviews: AI 审核完成后 INSERT 审核记录（结果、模型、耗时、置信度）
 - post_categories/tags: SELECT 基础配置（分类/标签存在性校验）；tags 命中时可调用存储过程 UpdateTagUsageCount 更新 use_count
-- MongoDB（社区内容存储）: INSERT 帖子文档与评论文档（不在此 SQL 文件范围）
 - reports: 审核不通过时可 INSERT 自动举报记录（可选）
 - system_logs/audit_logs: INSERT 发布/审核流程日志与审计
+
+#### MongoDB 操作流程
+```javascript
+// 1. 创建帖子文档
+db.posts.insertOne({
+  authorId: NumberLong(userId),
+  authorUsername: username,
+  authorEmail: email,
+  title: postTitle,
+  content: postContent,
+  images: imageUrls,
+  tags: postTags,
+  status: "PENDING",
+  likeCount: 0,
+  commentCount: 0,
+  shareCount: 0,
+  createdAt: new Date(),
+  updatedAt: new Date()
+});
+
+// 2. AI 审核通过后更新状态
+db.posts.updateOne(
+  { _id: ObjectId(postId) },
+  { 
+    $set: { 
+      status: "APPROVED", 
+      reviewResult: "APPROVED",
+      publishedAt: new Date(),
+      updatedAt: new Date()
+    }
+  }
+);
+
+// 3. 更新标签使用统计
+db.tags.updateMany(
+  { name: { $in: postTags } },
+  { $inc: { useCount: 1 }, $set: { updatedAt: new Date() } }
+);
+```
 
 ### 4. AI智能助手对话流程
 
@@ -173,6 +211,63 @@ sequenceDiagram
 - content_reviews: 若启用对话内容安全审查，则 INSERT 审核记录（可选）
 - system_logs: INSERT 关键步骤日志（调用 Dify、返回结果）
 
+#### MongoDB 操作流程
+```javascript
+// 1. 创建或获取对话会话
+let conversation = db.ai_conversations.findOne({ 
+  conversationId: externalConversationId 
+});
+
+if (!conversation) {
+  conversation = db.ai_conversations.insertOne({
+    conversationId: externalConversationId,
+    userId: NumberLong(userId),
+    sessionId: sessionId,
+    status: "ACTIVE",
+    createdAt: new Date(),
+    updatedAt: new Date()
+  });
+}
+
+// 2. 保存用户消息
+db.ai_messages.insertOne({
+  conversationId: conversation._id,
+  messageType: "USER",
+  content: userMessage,
+  metadata: { lang: "zh", channel: "web" },
+  tokenCount: userTokenCount,
+  processingTimeMs: 0,
+  createdAt: new Date()
+});
+
+// 3. 保存AI回复消息
+db.ai_messages.insertOne({
+  conversationId: conversation._id,
+  messageType: "ASSISTANT",
+  content: aiResponse,
+  metadata: { 
+    model: "qwen2.5-7b", 
+    temperature: 0.7,
+    confidence: 0.95
+  },
+  tokenCount: aiTokenCount,
+  processingTimeMs: responseTime,
+  createdAt: new Date()
+});
+
+// 4. 更新对话状态（结束时）
+db.ai_conversations.updateOne(
+  { _id: conversation._id },
+  { 
+    $set: { 
+      status: "ENDED", 
+      endedAt: new Date(),
+      updatedAt: new Date()
+    }
+  }
+);
+```
+
 ### 5. 实时通知推送流程
 
 ```mermaid
@@ -195,9 +290,387 @@ sequenceDiagram
 - system_configs: SELECT 通知与渠道开关配置
 - system_logs: INSERT 推送状态日志
 
+#### MongoDB 操作流程
+```javascript
+// 1. 创建通知记录
+db.notifications.insertOne({
+  receiverId: NumberLong(receiverId),
+  title: notificationTitle,
+  content: notificationContent,
+  type: notificationType, // LIKE/COMMENT/FRIEND_REQUEST/MESSAGE
+  priority: "NORMAL",
+  category: notificationCategory,
+  status: "UNREAD",
+  expireAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7天后过期
+  createdAt: new Date(),
+  updatedAt: new Date()
+});
+
+// 2. 批量创建通知（如点赞通知）
+db.notifications.insertMany([
+  {
+    receiverId: NumberLong(postAuthorId),
+    title: "新的点赞",
+    content: `${likerName} 点赞了你的帖子《${postTitle}》`,
+    type: "LIKE",
+    priority: "LOW",
+    category: "interaction",
+    status: "UNREAD",
+    createdAt: new Date()
+  }
+]);
+
+// 3. 更新通知状态（用户已读）
+db.notifications.updateMany(
+  { 
+    receiverId: NumberLong(userId),
+    status: "UNREAD"
+  },
+  { 
+    $set: { 
+      status: "READ",
+      updatedAt: new Date()
+    }
+  }
+);
+
+// 4. 清理过期通知
+db.notifications.deleteMany({
+  expireAt: { $lt: new Date() }
+});
+
+// 5. 获取用户未读通知
+db.notifications.find({
+  receiverId: NumberLong(userId),
+  status: "UNREAD"
+}).sort({ createdAt: -1 }).limit(20);
+```
+
+---
+
+## 🔄 MongoDB 业务操作流程详解
+
+### 1. 帖子评论操作流程
+
+```javascript
+// 1. 添加评论
+db.comments.insertOne({
+  postId: postId,
+  authorId: NumberLong(userId),
+  authorUsername: username,
+  authorEmail: email,
+  content: commentContent,
+  parentCommentId: parentCommentId || null,
+  likeCount: 0,
+  createdAt: new Date(),
+  updatedAt: new Date()
+});
+
+// 2. 更新帖子评论数
+db.posts.updateOne(
+  { _id: ObjectId(postId) },
+  { $inc: { commentCount: 1 } }
+);
+
+// 3. 获取帖子的所有评论（分页）
+db.comments.find({
+  postId: postId,
+  parentCommentId: null // 只获取顶级评论
+}).sort({ createdAt: -1 })
+  .skip((page - 1) * pageSize)
+  .limit(pageSize);
+
+// 4. 获取评论的回复
+db.comments.find({
+  parentCommentId: ObjectId(commentId)
+}).sort({ createdAt: 1 });
+```
+
+### 2. 点赞操作流程
+
+```javascript
+// 1. 添加点赞
+db.likes.insertOne({
+  userId: NumberLong(userId),
+  targetId: targetId, // 帖子ID或评论ID
+  targetType: targetType, // POST 或 COMMENT
+  createdAt: new Date()
+});
+
+// 2. 更新目标对象的点赞数
+if (targetType === "POST") {
+  db.posts.updateOne(
+    { _id: ObjectId(targetId) },
+    { $inc: { likeCount: 1 } }
+  );
+} else if (targetType === "COMMENT") {
+  db.comments.updateOne(
+    { _id: ObjectId(targetId) },
+    { $inc: { likeCount: 1 } }
+  );
+}
+
+// 3. 取消点赞
+db.likes.deleteOne({
+  userId: NumberLong(userId),
+  targetId: targetId,
+  targetType: targetType
+});
+
+// 4. 更新目标对象的点赞数（减少）
+if (targetType === "POST") {
+  db.posts.updateOne(
+    { _id: ObjectId(targetId) },
+    { $inc: { likeCount: -1 } }
+  );
+}
+
+// 5. 检查用户是否已点赞
+db.likes.findOne({
+  userId: NumberLong(userId),
+  targetId: targetId,
+  targetType: targetType
+});
+```
+
+### 3. 收藏操作流程
+
+```javascript
+// 1. 添加收藏
+db.favorites.insertOne({
+  userId: NumberLong(userId),
+  postId: postId,
+  createdAt: new Date()
+});
+
+// 2. 取消收藏
+db.favorites.deleteOne({
+  userId: NumberLong(userId),
+  postId: postId
+});
+
+// 3. 获取用户收藏的帖子
+db.favorites.find({
+  userId: NumberLong(userId)
+}).sort({ createdAt: -1 })
+  .skip((page - 1) * pageSize)
+  .limit(pageSize);
+
+// 4. 检查用户是否已收藏
+db.favorites.findOne({
+  userId: NumberLong(userId),
+  postId: postId
+});
+```
+
+### 4. 好友关系操作流程
+
+```javascript
+// 1. 发送好友申请
+db.friendships.insertOne({
+  userId: NumberLong(userId),
+  friendId: NumberLong(friendId),
+  status: "PENDING",
+  createdAt: new Date(),
+  updatedAt: new Date()
+});
+
+// 2. 接受好友申请
+db.friendships.updateOne(
+  { 
+    userId: NumberLong(friendId),
+    friendId: NumberLong(userId),
+    status: "PENDING"
+  },
+  { 
+    $set: { 
+      status: "ACCEPTED",
+      updatedAt: new Date()
+    }
+  }
+);
+
+// 3. 创建双向好友关系
+db.friendships.insertOne({
+  userId: NumberLong(userId),
+  friendId: NumberLong(friendId),
+  status: "ACCEPTED",
+  createdAt: new Date(),
+  updatedAt: new Date()
+});
+
+// 4. 获取用户的好友列表
+db.friendships.find({
+  userId: NumberLong(userId),
+  status: "ACCEPTED"
+}).sort({ createdAt: -1 });
+
+// 5. 获取待处理的好友申请
+db.friendships.find({
+  friendId: NumberLong(userId),
+  status: "PENDING"
+}).sort({ createdAt: -1 });
+```
+
+### 5. 私聊消息操作流程
+
+```javascript
+// 1. 发送消息
+db.messages.insertOne({
+  senderId: NumberLong(senderId),
+  receiverId: NumberLong(receiverId),
+  content: messageContent,
+  messageType: "TEXT",
+  status: "SENT",
+  createdAt: new Date(),
+  updatedAt: new Date()
+});
+
+// 2. 标记消息为已读
+db.messages.updateMany(
+  {
+    senderId: NumberLong(senderId),
+    receiverId: NumberLong(receiverId),
+    status: { $ne: "READ" }
+  },
+  {
+    $set: {
+      status: "READ",
+      updatedAt: new Date()
+    }
+  }
+);
+
+// 3. 获取两个用户之间的聊天记录
+db.messages.find({
+  $or: [
+    { senderId: NumberLong(userId1), receiverId: NumberLong(userId2) },
+    { senderId: NumberLong(userId2), receiverId: NumberLong(userId1) }
+  ]
+}).sort({ createdAt: 1 });
+
+// 4. 获取用户的未读消息数
+db.messages.countDocuments({
+  receiverId: NumberLong(userId),
+  status: "SENT"
+});
+```
+
+### 6. 文件上传操作流程
+
+```javascript
+// 1. 记录文件上传
+db.file_uploads.insertOne({
+  uploaderId: NumberLong(userId),
+  fileName: fileName,
+  fileSize: fileSize,
+  fileType: fileType,
+  fileUrl: fileUrl,
+  uploadPath: uploadPath,
+  status: "COMPLETED",
+  uploadedAt: new Date(),
+  createdAt: new Date()
+});
+
+// 2. 获取用户上传的文件列表
+db.file_uploads.find({
+  uploaderId: NumberLong(userId)
+}).sort({ uploadedAt: -1 });
+
+// 3. 按文件类型筛选
+db.file_uploads.find({
+  uploaderId: NumberLong(userId),
+  fileType: { $regex: "^image/" }
+}).sort({ uploadedAt: -1 });
+```
+
+### 7. 热门内容查询流程
+
+```javascript
+// 1. 获取热门帖子（使用聚合管道）
+db.posts.aggregate([
+  { $match: { status: "APPROVED" } },
+  { $sort: { likeCount: -1, createdAt: -1 } },
+  { $limit: 20 },
+  {
+    $lookup: {
+      from: "comments",
+      localField: "_id",
+      foreignField: "postId",
+      as: "comments"
+    }
+  },
+  {
+    $addFields: {
+      actualCommentCount: { $size: "$comments" }
+    }
+  }
+]);
+
+// 2. 获取用户活跃度统计
+db.posts.aggregate([
+  {
+    $group: {
+      _id: "$authorId",
+      username: { $first: "$authorUsername" },
+      postCount: { $sum: 1 },
+      totalLikes: { $sum: "$likeCount" },
+      lastPostDate: { $max: "$createdAt" }
+    }
+  },
+  { $sort: { postCount: -1 } },
+  { $limit: 10 }
+]);
+
+// 3. 获取标签使用统计
+db.posts.aggregate([
+  { $unwind: "$tags" },
+  {
+    $group: {
+      _id: "$tags",
+      usageCount: { $sum: 1 },
+      avgLikes: { $avg: "$likeCount" }
+    }
+  },
+  { $sort: { usageCount: -1 } }
+]);
+```
+
+### 8. 全文搜索操作流程
+
+```javascript
+// 1. 搜索帖子（全文搜索）
+db.posts.find({
+  $text: { $search: searchKeywords },
+  status: "APPROVED"
+}).sort({ score: { $meta: "textScore" } });
+
+// 2. 按标签搜索
+db.posts.find({
+  tags: { $in: [tagName] },
+  status: "APPROVED"
+}).sort({ createdAt: -1 });
+
+// 3. 复合搜索（标题+内容+标签）
+db.posts.find({
+  $and: [
+    { status: "APPROVED" },
+    {
+      $or: [
+        { title: { $regex: searchKeywords, $options: "i" } },
+        { content: { $regex: searchKeywords, $options: "i" } },
+        { tags: { $in: [searchKeywords] } }
+      ]
+    }
+  ]
+}).sort({ createdAt: -1 });
+```
+
 ---
 
 ## 🔗 业务流程与数据库表操作映射（汇总表）
+
+### MySQL 数据库操作
 
 - 用户注册/验证：
   - verification_codes: INSERT/SELECT/UPDATE/DELETE
@@ -227,6 +700,29 @@ sequenceDiagram
   - email_logs: INSERT/UPDATE
   - system_configs: SELECT
   - system_logs: INSERT
+
+### MongoDB 数据库操作
+
+- 帖子发布/管理：
+  - posts: INSERT（创建帖子）/UPDATE（状态更新）/FIND（查询帖子）
+  - comments: INSERT（添加评论）/FIND（查询评论）/UPDATE（更新评论数）
+  - likes: INSERT（点赞）/DELETE（取消点赞）/FIND（检查点赞状态）
+  - favorites: INSERT（收藏）/DELETE（取消收藏）/FIND（查询收藏）
+
+- 用户互动：
+  - friendships: INSERT（好友申请）/UPDATE（接受申请）/FIND（好友列表）
+  - messages: INSERT（发送消息）/UPDATE（标记已读）/FIND（聊天记录）
+  - notifications: INSERT（创建通知）/UPDATE（标记已读）/DELETE（清理过期）
+
+- 内容搜索/统计：
+  - posts: AGGREGATE（热门帖子统计）/FIND（全文搜索）
+  - tags: UPDATE（更新使用统计）/AGGREGATE（标签统计）
+  - file_uploads: INSERT（文件记录）/FIND（文件列表）
+
+- 数据维护：
+  - notifications: DELETE（清理过期通知）
+  - posts: UPDATE（更新统计数据）
+  - 各集合: 定期清理和统计更新
 
 ---
 
@@ -425,6 +921,296 @@ sequenceDiagram
 - ip_address: IP地址
 - user_agent: 用户代理
 - service_name: 服务名称
+```
+
+---
+
+## 🗄️ MongoDB 数据库集合设计详解
+
+### 社区服务相关集合 (Community Service)
+
+#### 1. `posts` - 帖子集合
+**作用**: 存储社区帖子内容
+```javascript
+{
+  _id: ObjectId,                    // 帖子唯一标识
+  authorId: NumberLong,             // 作者用户ID
+  authorUsername: String,           // 作者用户名
+  authorEmail: String,              // 作者邮箱
+  title: String,                    // 帖子标题
+  content: String,                  // 帖子内容
+  images: [String],                 // 图片URL数组
+  tags: [String],                   // 标签数组
+  status: String,                   // 状态(PENDING/APPROVED/REJECTED/DELETED)
+  reviewResult: String,             // 审核结果
+  likeCount: Number,                // 点赞数
+  commentCount: Number,             // 评论数
+  shareCount: Number,               // 分享数
+  createdAt: Date,                  // 创建时间
+  updatedAt: Date,                  // 更新时间
+  publishedAt: Date                 // 发布时间
+}
+```
+
+#### 2. `comments` - 评论集合
+**作用**: 存储帖子评论内容
+```javascript
+{
+  _id: ObjectId,                    // 评论唯一标识
+  postId: String,                   // 关联帖子ID
+  authorId: NumberLong,             // 评论者用户ID
+  authorUsername: String,           // 评论者用户名
+  authorEmail: String,              // 评论者邮箱
+  content: String,                  // 评论内容
+  parentCommentId: ObjectId,        // 父评论ID(回复评论)
+  likeCount: Number,                // 点赞数
+  createdAt: Date,                  // 创建时间
+  updatedAt: Date                   // 更新时间
+}
+```
+
+#### 3. `likes` - 点赞集合
+**作用**: 存储用户点赞记录
+```javascript
+{
+  _id: ObjectId,                    // 点赞记录唯一标识
+  userId: NumberLong,               // 点赞用户ID
+  targetId: String,                 // 目标ID(帖子ID或评论ID)
+  targetType: String,               // 目标类型(POST/COMMENT)
+  createdAt: Date                   // 点赞时间
+}
+```
+
+#### 4. `favorites` - 收藏集合
+**作用**: 存储用户收藏记录
+```javascript
+{
+  _id: ObjectId,                    // 收藏记录唯一标识
+  userId: NumberLong,               // 收藏用户ID
+  postId: String,                   // 收藏的帖子ID
+  createdAt: Date                   // 收藏时间
+}
+```
+
+#### 5. `friendships` - 好友关系集合
+**作用**: 存储用户好友关系
+```javascript
+{
+  _id: ObjectId,                    // 好友关系唯一标识
+  userId: NumberLong,               // 用户ID
+  friendId: NumberLong,            // 好友用户ID
+  status: String,                   // 关系状态(PENDING/ACCEPTED/REJECTED/BLOCKED)
+  createdAt: Date,                  // 创建时间
+  updatedAt: Date                   // 更新时间
+}
+```
+
+#### 6. `messages` - 消息集合
+**作用**: 存储用户私聊消息
+```javascript
+{
+  _id: ObjectId,                    // 消息唯一标识
+  senderId: NumberLong,            // 发送者用户ID
+  receiverId: NumberLong,          // 接收者用户ID
+  content: String,                 // 消息内容
+  messageType: String,             // 消息类型(TEXT/IMAGE/FILE/LINK)
+  status: String,                  // 消息状态(SENT/DELIVERED/READ)
+  createdAt: Date,                 // 发送时间
+  updatedAt: Date                  // 更新时间
+}
+```
+
+#### 7. `notifications` - 通知集合
+**作用**: 存储用户通知信息
+```javascript
+{
+  _id: ObjectId,                    // 通知唯一标识
+  receiverId: NumberLong,          // 接收者用户ID
+  title: String,                   // 通知标题
+  content: String,                 // 通知内容
+  type: String,                    // 通知类型(GENERAL/SYSTEM/LIKE/COMMENT/FRIEND_REQUEST/MESSAGE)
+  priority: String,                // 优先级(HIGH/NORMAL/LOW)
+  category: String,                // 通知分类
+  status: String,                 // 状态(UNREAD/READ)
+  expireAt: Date,                 // 过期时间
+  createdAt: Date,                // 创建时间
+  updatedAt: Date                 // 更新时间
+}
+```
+
+#### 8. `file_uploads` - 文件上传记录集合
+**作用**: 存储文件上传记录
+```javascript
+{
+  _id: ObjectId,                    // 文件记录唯一标识
+  uploaderId: NumberLong,          // 上传者用户ID
+  fileName: String,                // 文件名
+  fileSize: Number,                // 文件大小(字节)
+  fileType: String,                // 文件类型(MIME类型)
+  fileUrl: String,                 // 文件访问URL
+  uploadPath: String,              // 文件存储路径
+  status: String,                  // 上传状态(PENDING/COMPLETED/FAILED)
+  uploadedAt: Date,                // 上传时间
+  createdAt: Date                 // 创建时间
+}
+```
+
+### MongoDB 视图集合
+
+#### 9. `hot_posts` - 热门帖子视图
+**作用**: 聚合查询热门帖子
+```javascript
+// 基于 posts 集合的聚合视图
+// 按点赞数和创建时间排序的热门帖子
+```
+
+#### 10. `user_activity_stats` - 用户活跃度统计视图
+**作用**: 统计用户活跃度数据
+```javascript
+{
+  _id: NumberLong,                 // 用户ID
+  username: String,                // 用户名
+  postCount: Number,               // 发帖数量
+  totalLikes: Number,              // 总获赞数
+  lastPostDate: Date               // 最后发帖时间
+}
+```
+
+#### 11. `tag_usage_stats` - 标签使用统计视图
+**作用**: 统计标签使用情况
+```javascript
+{
+  _id: String,                     // 标签名称
+  usageCount: Number,              // 使用次数
+  avgLikes: Number                 // 平均点赞数
+}
+```
+
+### MongoDB 索引设计
+
+#### 帖子集合索引
+```javascript
+// 基础索引
+{ "authorId": 1 }                  // 按作者查询
+{ "status": 1 }                    // 按状态查询
+{ "createdAt": -1 }                // 按创建时间排序
+{ "publishedAt": -1 }              // 按发布时间排序
+{ "likeCount": -1 }                // 按点赞数排序
+{ "tags": 1 }                      // 按标签查询
+
+// 复合索引
+{ "authorId": 1, "status": 1 }     // 作者+状态
+{ "status": 1, "createdAt": -1 }  // 状态+时间
+{ "status": 1, "publishedAt": -1 } // 状态+发布时间
+
+// 全文搜索索引
+{ "title": "text", "content": "text" } // 标题和内容全文搜索
+```
+
+#### 评论集合索引
+```javascript
+{ "postId": 1 }                    // 按帖子查询
+{ "authorId": 1 }                 // 按作者查询
+{ "createdAt": -1 }                // 按时间排序
+{ "parentCommentId": 1 }           // 按父评论查询
+{ "postId": 1, "createdAt": -1 }   // 帖子+时间
+{ "postId": 1, "parentCommentId": 1 } // 帖子+父评论
+```
+
+#### 点赞集合索引
+```javascript
+{ "userId": 1 }                    // 按用户查询
+{ "targetId": 1 }                  // 按目标查询
+{ "targetType": 1 }                // 按目标类型查询
+{ "createdAt": -1 }                // 按时间排序
+{ "userId": 1, "targetId": 1, "targetType": 1 } // 唯一约束
+```
+
+#### 收藏集合索引
+```javascript
+{ "userId": 1 }                    // 按用户查询
+{ "postId": 1 }                    // 按帖子查询
+{ "createdAt": -1 }                // 按时间排序
+{ "userId": 1, "postId": 1 }       // 唯一约束
+```
+
+#### 好友关系集合索引
+```javascript
+{ "userId": 1 }                    // 按用户查询
+{ "friendId": 1 }                  // 按好友查询
+{ "status": 1 }                    // 按状态查询
+{ "createdAt": -1 }                // 按时间排序
+{ "userId": 1, "friendId": 1 }     // 唯一约束
+{ "friendId": 1, "status": 1 }     // 好友+状态
+```
+
+#### 消息集合索引
+```javascript
+{ "senderId": 1 }                  // 按发送者查询
+{ "receiverId": 1 }                // 按接收者查询
+{ "createdAt": -1 }                // 按时间排序
+{ "status": 1 }                    // 按状态查询
+{ "senderId": 1, "receiverId": 1 } // 发送者+接收者
+{ "receiverId": 1, "status": 1 }   // 接收者+状态
+```
+
+#### 通知集合索引
+```javascript
+{ "receiverId": 1 }                // 按接收者查询
+{ "type": 1 }                      // 按类型查询
+{ "status": 1 }                    // 按状态查询
+{ "createdAt": -1 }                // 按时间排序
+{ "expireAt": 1 }                  // 按过期时间查询
+{ "receiverId": 1, "status": 1 }   // 接收者+状态
+{ "receiverId": 1, "createdAt": -1 } // 接收者+时间
+```
+
+#### 文件上传集合索引
+```javascript
+{ "uploaderId": 1 }                // 按上传者查询
+{ "fileType": 1 }                  // 按文件类型查询
+{ "uploadedAt": -1 }                // 按上传时间排序
+{ "status": 1 }                    // 按状态查询
+```
+
+### MongoDB 数据验证规则
+
+#### 帖子集合验证
+```javascript
+{
+  $jsonSchema: {
+    bsonType: "object",
+    required: ["authorId", "authorUsername", "authorEmail", "title", "content", "status", "createdAt"],
+    properties: {
+      authorId: { bsonType: "long" },
+      authorUsername: { bsonType: "string", minLength: 1, maxLength: 50 },
+      authorEmail: { bsonType: "string", pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$" },
+      title: { bsonType: "string", minLength: 1, maxLength: 200 },
+      content: { bsonType: "string", minLength: 1, maxLength: 10000 },
+      status: { enum: ["PENDING", "APPROVED", "REJECTED", "DELETED"] },
+      likeCount: { bsonType: "int", minimum: 0 },
+      commentCount: { bsonType: "int", minimum: 0 },
+      shareCount: { bsonType: "int", minimum: 0 }
+    }
+  }
+}
+```
+
+#### 评论集合验证
+```javascript
+{
+  $jsonSchema: {
+    bsonType: "object",
+    required: ["postId", "authorId", "authorUsername", "content", "createdAt"],
+    properties: {
+      postId: { bsonType: "string" },
+      authorId: { bsonType: "long" },
+      authorUsername: { bsonType: "string", minLength: 1, maxLength: 50 },
+      content: { bsonType: "string", minLength: 1, maxLength: 1000 },
+      likeCount: { bsonType: "int", minimum: 0 }
+    }
+  }
+}
 ```
 
 ---
