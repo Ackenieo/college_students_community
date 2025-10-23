@@ -28,20 +28,12 @@ public class UserController {
     
     /**
      * 用户登录
-     * @param email 用户邮箱
-     * @param password 用户密码
+     * @param request 登录请求，包含邮箱和密码
      * @return 登录响应，包含JWT token和用户信息
      */
     @PostMapping("/login")
-    public Result<AuthResponseVO> login(
-            @RequestParam String email,
-            @RequestParam String password) {
+    public Result<AuthResponseVO> login(@Valid @RequestBody LoginRequestVO request) {
         try {
-            // 构建登录请求对象
-            LoginRequestVO request = new LoginRequestVO();
-            request.setEmail(email);
-            request.setPassword(password);
-            
             AuthResponseVO response = userService.login(request);
             return Result.success("登录成功", response);
         } catch (Exception e) {
@@ -54,30 +46,21 @@ public class UserController {
     
     /**
      * 用户注册（邮箱验证码）
-     * @param username 用户名
-     * @param email 邮箱
-     * @param password 密码
-     * @param code 邮箱验证码
+     * @param request 注册请求，包含用户名、邮箱、密码和验证码
      * @return 注册成功的用户信息
      */
     @PostMapping("/register")
-    public Result<UserDTO> register(
-            @RequestParam String username,
-            @RequestParam String email,
-            @RequestParam String password,
-            @RequestParam String code) {
+    public Result<RegisterResponseVO> register(@Valid @RequestBody RegisterRequestVO request) {
         try {
-            // 构建注册请求对象
-            RegisterRequestVO request = new RegisterRequestVO();
-            request.setUsername(username);
-            request.setEmail(email);
-            request.setPassword(password);
-            
             // 构建验证码请求对象
-            VerifyCodeRequestVO verifyRequest = new VerifyCodeRequestVO(email, code);
+            VerifyCodeRequestVO verifyRequest = new VerifyCodeRequestVO(request.getEmail(), request.getCode());
             
-            UserDTO user = userService.register(request, verifyRequest);
-            return Result.success("注册成功", user);
+            // 微服务内部使用 DTO 进行处理
+            UserDTO userDTO = userService.register(request, verifyRequest);
+            
+            // 返回给前端使用 VO 进行封装
+            RegisterResponseVO userResponse = RegisterResponseVO.fromUserDTO(userDTO);
+            return Result.success("注册成功", userResponse);
         } catch (Exception e) {
             return Result.error(ResultCode.VERIFICATION_CODE_INVALID.getCode(), "注册失败: " + e.getMessage());
         }
@@ -86,13 +69,13 @@ public class UserController {
     
     /**
      * 发送注册验证码
-     * @param email 用户邮箱
+     * @param request 发送验证码请求，包含用户邮箱
      * @return 发送结果
      */
     @PostMapping("/send-register-code")
-    public Result<String> sendRegisterVerificationCode(@RequestParam String email) {
+    public Result<String> sendRegisterVerificationCode(@Valid @RequestBody SendVerificationCodeRequestVO request) {
         try {
-            userService.sendRegisterVerificationCode(email);
+            userService.sendRegisterVerificationCode(request.getEmail());
             return Result.success("验证码已发送", "验证码已发送到您的邮箱");
         } catch (Exception e) {
             return Result.error(ResultCode.EMAIL_SEND_FAILED.getCode(), "发送失败: " + e.getMessage());
@@ -101,13 +84,13 @@ public class UserController {
     
     /**
      * 发送密码重置验证码
-     * @param email 用户邮箱
+     * @param request 发送验证码请求，包含用户邮箱
      * @return 发送结果
      */
     @PostMapping("/send-reset-code")
-    public Result<String> sendPasswordResetCode(@RequestParam String email) {
+    public Result<String> sendPasswordResetCode(@Valid @RequestBody SendVerificationCodeRequestVO request) {
         try {
-            userService.sendPasswordResetCode(email);
+            userService.sendPasswordResetCode(request.getEmail());
             return Result.success("验证码已发送", "验证码已发送到您的邮箱");
         } catch (Exception e) {
             return Result.error(ResultCode.EMAIL_SEND_FAILED.getCode(), "发送失败: " + e.getMessage());

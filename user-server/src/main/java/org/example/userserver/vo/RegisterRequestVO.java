@@ -33,4 +33,8 @@ public class RegisterRequestVO {
     
     @Size(max = 20, message = "手机号长度不能超过20个字符")
     private String phone;
+    
+    @NotBlank(message = "验证码不能为空")
+    @Size(min = 6, max = 6, message = "验证码长度必须为6位")
+    private String code;
 }

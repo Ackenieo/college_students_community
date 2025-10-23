@@ -1,0 +1,122 @@
+server:
+  port: 8084
+
+# Spring 相关配置
+spring:
+  application:
+    name: notification-server
+  profiles:
+    # 激活环境
+    active: dev
+  cloud:
+    # 配置中心
+    config:
+      enabled: true
+      uri: http://localhost:8888
+    # 服务注册与发现（Nacos）
+    nacos:
+      discovery:
+        server-addr: localhost:8848
+        namespace: public
+        group: DEFAULT_GROUP
+        metadata:
+          version: 1.0.0
+          region: beijing
+          zone: zone1
+  data:
+    # Spring Data Redis 连接信息
+    redis:
+      host: localhost
+      port: 6379
+      password:
+      database: 3
+      timeout: 3000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-wait: -1ms
+          max-idle: 8
+          min-idle: 0
+  # 邮件发送（阿里云 SMTP）
+  mail:
+    # 阿里云企业邮箱 SMTP 地址（示例：smtp.qiye.aliyun.com）
+    host: smtp.qiye.aliyun.com
+    # 465 为 SSL，587 为 StartTLS，请按实际开通端口选择
+    port: 465
+    username: your-alimail-account@example.com
+    password: your-app-password-or-smtp-token
+    protocol: smtp
+    default-encoding: UTF-8
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.ssl.enable: true
+      mail.smtp.starttls.enable: false
+  # RabbitMQ 连接信息
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+    virtual-host: /
+
+# OpenAPI文档配置
+springdoc:
+  api-docs:
+    path: /v3/api-docs  # 文档默认路径
+  packages-to-scan: org.example.notificationserver.controller  # 需要扫描的Controller包（替换为自己的包路径）
+  openapi:
+    info:
+      title: 通知服务API文档  # 服务文档标题
+      description: 包含通知服务接口  # 服务描述
+      version: 0.0.1  # 版本
+  group-configs:
+    - group: notification-server
+      packages-to-scan: org.example.notificationserver.controller
+
+# Knife4j增强配置
+knife4j:
+  enable: true  # 启用Knife4j
+  setting:
+    language: zh_cn  # 中文显示
+    enable-swagger-models: true  # 显示实体类
+
+# Actuator 管理端点
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+
+# 弹性容错配置
+resilience4j:
+  circuitbreaker:
+    instances:
+      notificationService:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        permittedNumberOfCallsInHalfOpenState: 3
+        slidingWindowType: TIME_BASED
+        minimumNumberOfCalls: 5
+        waitDurationInOpenState: 10s
+        failureRateThreshold: 50
+
+# 日志级别
+logging:
+  level:
+    org.example.notificationserver: DEBUG
+
+notification:
+  email:
+    # 是否启用邮件通知（验证码、找回密码等）
+    enabled: true
+    # 发件人显示名称
+    from-name: 校园社区平台
+    # 发件人邮箱（与 spring.mail.username 一致或别名）
+    from-address: your-alimail-account@example.com
+    # 验证码邮件主题模板
+    subject-verify-code: 您的验证码
+    # 找回密码邮件主题模板
+    subject-reset-password: 找回密码验证码

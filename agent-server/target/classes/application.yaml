@@ -40,6 +40,27 @@ spring:
           max-idle: 8
           min-idle: 0
 
+# OpenAPI文档配置
+springdoc:
+  api-docs:
+    path: /v3/api-docs  # 文档默认路径
+  packages-to-scan: org.example.agentserver.controller  # 需要扫描的Controller包（替换为自己的包路径）
+  openapi:
+    info:
+      title: AI代理审核服务API文档  # 服务文档标题
+      description: 包含AI代理审核接口  # 服务描述
+      version: 0.0.1  # 版本
+  group-configs:
+    - group: agent-server
+      packages-to-scan: org.example.agentserver.controller
+
+# Knife4j增强配置
+knife4j:
+  enable: true  # 启用Knife4j
+  setting:
+    language: zh_cn  # 中文显示
+    enable-swagger-models: true  # 显示实体类
+
 # Dify 配置
 dify:
   api:
