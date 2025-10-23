@@ -1,0 +1,35 @@
+spring:
+  application:
+    name: user-server
+  profiles:
+    active: dev
+  cloud:
+    nacos:
+      # 配置中心（必须先配置，用于启动时加载远程配置）
+      config:
+        server-addr: 8.148.189.41:8848
+        namespace: public
+        group: DEFAULT_GROUP
+        file-extension: yaml
+        enabled: true
+        # 共享配置（可选）
+        shared-configs:
+          - data-id: common-config.yaml
+            group: DEFAULT_GROUP
+            refresh: true
+      # 服务注册发现（可以在这里统一配置）
+      discovery:
+        server-addr: 8.148.189.41:8848
+        namespace: public
+        group: DEFAULT_GROUP
+        enabled: true  # 明确启用服务发现
+        register-enabled: true  # 明确启用服务注册
+        # 健康检查配置
+        heart-beat-interval: 5000  # 心跳间隔（毫秒）
+        heart-beat-timeout: 15000  # 心跳超时（毫秒）
+        ip-delete-timeout: 30000   # IP删除超时（毫秒）
+        metadata:
+          version: 1.0.0
+          region: beijing
+          zone: zone1
+          management.context-path: /actuator  # 健康检查路径
