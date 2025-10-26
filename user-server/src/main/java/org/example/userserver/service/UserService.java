@@ -178,4 +178,24 @@ public class UserService {
         verifyCodeService.clearCode(request.getEmail());
     }
 
+    /**
+     * 根据用户ID获取用户信息
+     * @param userId 用户ID
+     * @return 用户信息
+     */
+    //TODO: 待测
+    public UserDTO getUserById(Long userId) {
+        // 从缓存中获取用户
+        UserDTO cachedUser = (UserDTO) redisTemplate.opsForValue().get(USER_CACHE_PREFIX + userId);
+        if (cachedUser != null) {
+            return cachedUser;
+        }
+        // 从数据库中获取用户
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("用户不存在"));
+        // 缓存用户信息
+        cacheUser(user);
+        // 返回用户信息
+        return UserDTO.fromEntity(user);
+    }
 }

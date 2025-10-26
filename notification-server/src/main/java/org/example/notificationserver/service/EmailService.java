@@ -43,6 +43,10 @@ public class EmailService {
         sendHtml(toAddress, subject, content);
     }
 
+    /**
+     * 发送邮件
+     * @param request
+     */
     public void sendEmail(EmailRequest request) {
         if (!emailProperties.isEnabled()) {
             logger.info("邮件发送已关闭，跳过发送邮件");

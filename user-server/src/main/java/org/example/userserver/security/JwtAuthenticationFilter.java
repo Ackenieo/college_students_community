@@ -16,6 +16,10 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.ArrayList;
 
+/**
+ * JWT认证过滤器
+ * 该过滤器用于在每个请求中验证JWT令牌，并将验证通过的用户信息设置到Spring Security的上下文Holder中。
+ */
 @Slf4j
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {

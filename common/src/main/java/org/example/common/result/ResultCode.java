@@ -47,14 +47,19 @@ public enum ResultCode {
     FRIENDSHIP_NOT_FOUND(3001, "好友关系不存在"),
     FRIENDSHIP_ALREADY_EXISTS(3002, "好友关系已存在"),
     FRIEND_REQUEST_NOT_FOUND(3003, "好友请求不存在"),
-    
+    FRIEND_REQUEST_ALREADY_EXISTS(3004, "好友请求已存在"),
+    CANNOT_ADD_SELF_AS_FRIEND(3005, "不能添加自己为好友"),
+    //FRIEND_BLOCKED(3006, "好友已被拉黑"),
+
+
     // 消息相关错误码
     MESSAGE_NOT_FOUND(4001, "消息不存在"),
     MESSAGE_SEND_FAILED(4002, "消息发送失败"),
     
     // 通知相关错误码
     NOTIFICATION_NOT_FOUND(5001, "通知不存在"),
-    EMAIL_SEND_FAILED(5002, "邮件发送失败");
+    NOTIFICATION_SEND_FAILED(5002, "通知发送失败"),
+    EMAIL_SEND_FAILED(5003, "邮件发送失败");
     
     /**
      * 响应码

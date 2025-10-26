@@ -86,7 +86,7 @@ spring:
         namespace: public
         group: DEFAULT_GROUP
         username: nacos
-        password: Root123_
+        password: Root123_MTU1M-/...
 
 knife4j:
   gateway:

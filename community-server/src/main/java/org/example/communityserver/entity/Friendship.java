@@ -1,6 +1,7 @@
 package org.example.communityserver.entity;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
@@ -14,6 +15,7 @@ import org.springframework.data.mongodb.core.index.CompoundIndexes;
 import java.time.LocalDateTime;
 
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @Document(collection = "friendships")

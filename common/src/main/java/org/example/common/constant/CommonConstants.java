@@ -67,6 +67,7 @@ public class CommonConstants {
         public static final String FOLLOW = "follow";       // 关注
         public static final String MESSAGE = "message";     // 消息
         public static final String SYSTEM = "system";       // 系统通知
+        public static final String FRIEND_REQUEST = "friend_request";  // 好友申请
     }
     
     /**
@@ -116,5 +117,22 @@ public class CommonConstants {
         public static final Long JWT_TOKEN = 86400L;           // JWT令牌24小时
         public static final Long USER_INFO = 3600L;            // 用户信息1小时
         public static final Long POST_CACHE = 1800L;           // 帖子缓存30分钟
+        public static final Long FRIENDSHIP_CACHE = 120L;      // 好友关系缓存2分钟(防止恶意请求)
+    }
+
+    /**
+     * 消息队列相关常量
+     */
+    public static class MessageQueue {
+        // 死信交换机/队列/路由键
+        public static final String DLX_EXCHANGE = "dlx.exchange";
+        public static final String DLX_QUEUE = "dlx.queue";
+        public static final String DLX_ROUTING_KEY = "dlx.routing.key";
+
+        // 延时交换机/队列/路由键（消息暂存，等待过期）
+        public static final String DELAY_EXCHANGE = "delay.exchange";
+        public static final String DELAY_QUEUE = "delay.queue";
+        public static final String DELAY_ROUTING_KEY = "delay.routing.key";
+
     }
 }

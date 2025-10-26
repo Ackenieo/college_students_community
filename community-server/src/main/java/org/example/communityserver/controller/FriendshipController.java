@@ -22,21 +22,32 @@ public class FriendshipController {
     
     @Autowired
     private FriendshipService friendshipService;
-    
-    /**
-     * 发送好友申请
-     * 向指定用户发送好友申请。
-     *
-     * @param userId 当前用户ID (从请求头中获取)
-     * @param request 好友申请请求，包含目标好友ID
-     * @return 创建的好友关系对象
-     */
+
+    //先前版本
+//    /**
+//     * 发送好友申请
+//     * 向指定用户发送好友申请。
+//     *
+//     * @param userId 当前用户ID (从请求头中获取)
+//     * @param request 好友申请请求，包含目标好友ID
+//     * @return 创建的好友关系对象
+//     */
+//    @PostMapping("/request")
+//    public Result<Friendship> sendFriendRequest(
+//            @RequestHeader("X-User-Id") Long userId,
+//            @Valid @RequestBody FriendshipRequest request) {
+//        try {
+//            Friendship friendship = friendshipService.sendFriendRequest(userId, request.getFriendId());
+//            return Result.success("好友申请发送成功", friendship);
+//        } catch (Exception e) {
+//            return Result.error(ResultCode.BAD_REQUEST.getCode(), "发送好友申请失败: " + e.getMessage());
+//        }
+//    }
+
     @PostMapping("/request")
-    public Result<Friendship> sendFriendRequest(
-            @RequestHeader("X-User-Id") Long userId,
-            @Valid @RequestBody FriendshipRequest request) {
+    public Result<Friendship> sendFriendRequest(@Valid @RequestBody FriendshipRequest request) {
         try {
-            Friendship friendship = friendshipService.sendFriendRequest(userId, request.getFriendId());
+            Friendship friendship = friendshipService.sendFriendRequest(request);
             return Result.success("好友申请发送成功", friendship);
         } catch (Exception e) {
             return Result.error(ResultCode.BAD_REQUEST.getCode(), "发送好友申请失败: " + e.getMessage());

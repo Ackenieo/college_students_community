@@ -111,6 +111,21 @@ public class UserController {
             return Result.error(ResultCode.VERIFICATION_CODE_INVALID.getCode(), "重置失败: " + e.getMessage());
         }
     }
-    
+
+    /**
+     * 根据用户ID获取用户信息
+     * @param userId 用户ID
+     * @return 用户信息
+     */
+     @GetMapping("/{userId}")
+    public Result<UserDTO> getUserById(@PathVariable("userId") Long userId) {
+        try {
+            UserDTO userDTO = userService.getUserById(userId);
+            return Result.success("获取用户成功", userDTO);
+        } catch (Exception e) {
+            return Result.error(ResultCode.USER_NOT_FOUND.getCode(), "获取用户失败: " + e.getMessage());
+        }
+    }
+
 
 }

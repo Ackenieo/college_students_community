@@ -12,7 +12,7 @@ import jakarta.validation.constraints.NotNull;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "好友请求DTO")
+@Schema(description = "好友请求")
 public class FriendshipRequest {
 
     @Schema(description = "请求发送者ID")
@@ -23,14 +23,17 @@ public class FriendshipRequest {
     @NotNull(message = "好友ID不能为空")
     private Long friendId;
 
-    @Schema(description = "好友邮箱或用户名")
-    @NotBlank(message = "好友邮箱或用户名不能为空")
-    private String searchKeyword; // 可以是邮箱或用户名
+//    @Schema(description = "好友邮箱或用户名")
+//    @NotBlank(message = "好友邮箱或用户名不能为空")
+//    private String searchKeyword; // 可以是邮箱或用户名
 
-    @Schema(description = "好友邮箱")
-    @Email(message = "邮箱格式不正确")
-    private String email;
+//    @Schema(description = "好友邮箱")
+//    @Email(message = "邮箱格式不正确")
+//    private String email;
 
-    @Schema(description = "好友用户名")
-    private String username;
+    @Schema(description = "请求发送者用户名")
+    private String senderName;
+
+    @Schema(description = "好友申请备注信息")
+    private String requestMessage;
 }
