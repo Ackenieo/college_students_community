@@ -6,6 +6,8 @@ import org.example.common.result.ResultCode;
 import org.example.communityserver.dto.FriendNotificationDTO;
 import org.example.communityserver.dto.FriendshipRequest;
 import org.example.communityserver.entity.Friendship;
+import org.example.communityserver.mq.produce.FriendNotificationProduce;
+import org.example.communityserver.mq.produce.FriendRequestExpireProduce;
 import org.example.communityserver.remote.UserRemoteService;
 import org.example.communityserver.repository.FriendshipRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +43,15 @@ public class FriendshipService {
 
     @Autowired
     private RedisTemplate redisTemplate;
+
+    @Autowired
+    private BlacklistService blacklistService;
+
+    @Autowired
+    private FriendRequestExpireProduce friendRequestExpireProduce;
+
+    @Autowired
+    private FriendNotificationProduce friendNotificationProduce;
 
     //先前版本
 //    public Friendship sendFriendRequestV1(Long userId, Long friendId) {
@@ -93,19 +104,19 @@ public class FriendshipService {
             throw new InvalidOperationException(ResultCode.CANNOT_ADD_SELF_AS_FRIEND, "不能添加自己为好友");
         }
 
-        // TODO: 检查好友用户信息是否存在 不知道加不加
-//        String cacheKeyUserExist = FRIENDSHIP + friendId;
-//        // 检查缓存中是否存在好友用户信息(防止恶意请求)
-//        if (redisTemplate.opsForValue().get(cacheKeyUserExist) != null) {
-//            throw new InvalidOperationException(ResultCode.USER_NOT_FOUND, "好友用户不存在");
-//        }
-//
-//        // 检查好友是否存在
-//        if (userRemoteService.getUserById(friendId) == null) {
-//            // 缓存好友用户不存在
-//            redisTemplate.opsForValue().set(cacheKeyUserExist, "notExist", FRIENDSHIP_CACHE, TimeUnit.SECONDS);
-//            throw new InvalidOperationException(ResultCode.USER_NOT_FOUND, "好友用户不存在");
-//        }
+        // TODO: 检查好友用户信息是否存在(待测)
+        String cacheKeyUserExist = FRIENDSHIP + friendId;
+        // 检查缓存中是否存在好友用户信息(防止恶意请求)
+        if (redisTemplate.opsForValue().get(cacheKeyUserExist) != null) {
+            throw new InvalidOperationException(ResultCode.USER_NOT_FOUND, "好友用户不存在");
+        }
+
+        // 检查好友是否存在
+        if (userRemoteService.getUserById(friendId) == null) {
+            // 缓存好友用户不存在
+            redisTemplate.opsForValue().set(cacheKeyUserExist, "notExist", FRIENDSHIP_CACHE, TimeUnit.SECONDS);
+            throw new InvalidOperationException(ResultCode.USER_NOT_FOUND, "好友用户不存在");
+        }
 
         // 检查缓存中是否存在好友关系(防止恶意请求)
         String cacheKeyFriendShip = FRIENDSHIP + userId + ":" + friendId;
@@ -120,7 +131,10 @@ public class FriendshipService {
             throw new InvalidOperationException(ResultCode.FRIEND_REQUEST_ALREADY_EXISTS, "已经是好友关系");
         }
 
-        // TODO: 检查是否被对方列入黑名单
+        // TODO: 检查是否被对方列入黑名单 - 已完善: 使用BlacklistService检查
+        if (blacklistService.isBlocked(friendId, userId)) {
+            throw new InvalidOperationException(ResultCode.BAD_REQUEST, "您已被对方列入黑名单,无法发送好友申请");
+        }
 
         // 检查是否已经发送过申请
         Optional<Friendship> existingRequest = friendshipRepository.findByUserIdAndFriendId(userId, friendId);
@@ -139,7 +153,9 @@ public class FriendshipService {
 
         Friendship savedFriendship = friendshipRepository.save(friendship);
 
-        // TODO: 延时队列实现申请过时
+        // TODO: 延时队列实现申请过时 - 已完善: 使用FriendRequestExpireProduce发送延时消息
+        // 好友申请7天后自动过期
+        friendRequestExpireProduce.sendFriendRequestExpireMessage(userId, friendId, savedFriendship.getId(), 7 * 24 * 60 * 60 * 1000L);
 
         // 创建申请通知
         UserDTO sender = userRemoteService.getUserById(userId);
@@ -152,8 +168,13 @@ public class FriendshipService {
                         .createTime(LocalDateTime.now())
                         .build();
 
-        // TODO: 准备改消息队列异步实现
-        notificationService.sendFriendRequestNotification(friendId, friendNotificationDTO);
+        // TODO: 准备改消息队列异步实现 - 已完善: 使用FriendNotificationProduce异步发送通知
+        org.example.communityserver.mq.event.FriendNotificationEvent notificationEvent =
+                org.example.communityserver.mq.event.FriendNotificationEvent.builder()
+                        .receiverId(friendId)
+                        .friendNotificationDTO(friendNotificationDTO)
+                        .build();
+        friendNotificationProduce.sendFriendNotification(notificationEvent);
 
         return savedFriendship;
     }
@@ -163,10 +184,15 @@ public class FriendshipService {
         if (friendshipOpt.isEmpty()) {
             throw new RuntimeException("好友申请不存在");
         }
-        
+
+        // TODO: 检查是否被对方列入黑名单 - 已完善: 使用BlacklistService检查
+        if (blacklistService.isEitherBlocked(userId, friendId)) {
+            throw new InvalidOperationException(ResultCode.BAD_REQUEST, "双方存在黑名单关系,无法接受好友申请");
+        }
+
         Friendship friendship = friendshipOpt.get();
         friendship.setStatus(status);
-        
+
         // 如果是接受申请，创建双向好友关系
         if (status == Friendship.FriendshipStatus.ACCEPTED) {
             // 创建反向好友关系
@@ -176,7 +202,7 @@ public class FriendshipService {
             reverseFriendship.setStatus(Friendship.FriendshipStatus.ACCEPTED);
             friendshipRepository.save(reverseFriendship);
         }
-        
+
         return friendshipRepository.save(friendship);
     }
     

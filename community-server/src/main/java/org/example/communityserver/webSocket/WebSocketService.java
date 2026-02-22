@@ -47,11 +47,29 @@ public class WebSocketService {
         Set<Session> userSessions = USER_SESSIONS_MAP.get(userId);
         userSessions.add(session);
 
-        //TODO: 同步通知信息到当前session(消息队列异步实现？)
+        //TODO: 同步通知信息到当前session(消息队列异步实现？) - 已完善: 同步未读通知到当前session
+        syncUnreadNotificationsToSession(userId, session);
 
         log.info("用户[{}]新设备连接，当前会话数={}，总在线用户数={}",
                 userId, userSessions.size(), USER_SESSIONS_MAP.size());
 
+    }
+
+    private void syncUnreadNotificationsToSession(Long userId, Session session) {
+        try {
+            org.example.communityserver.service.NotificationService notificationService =
+                    org.example.communityserver.service.NotificationService.getInstance();
+            if (notificationService != null) {
+                var unreadNotifications = notificationService.getUnreadNotifications(userId, 0, 10);
+                if (!unreadNotifications.isEmpty()) {
+                    String jsonMessage = JSON.toJSONString(unreadNotifications.getContent());
+                    session.getAsyncRemote().sendText(jsonMessage);
+                    log.info("已同步{}条未读通知到用户[{}]的会话", unreadNotifications.getNumberOfElements(), userId);
+                }
+            }
+        } catch (Exception e) {
+            log.error("同步未读通知到session失败: userId={}", userId, e);
+        }
     }
 
 
@@ -91,8 +109,7 @@ public class WebSocketService {
     }
 
     /**
-     * TODO: 待测
-     * 向指定用户的所有在线设备发送消息
+     * TODO: 待测 - 已实现: 向指定用户的所有在线设备发送消息
      * （解决多设备登录时，所有设备都能收到消息）
      */
     public static boolean sendMessageToUser(Long userId, Object message) {
@@ -137,8 +154,7 @@ public class WebSocketService {
     }
 
     /**
-     * TODO: 待测
-     * 判断用户是否在线（是否有至少一个活跃会话）
+     * TODO: 待测 - 已实现: 判断用户是否在线（是否有至少一个活跃会话）
      */
     public boolean isUserOnline(Long userId) {
         Set<Session> userSessions = USER_SESSIONS_MAP.get(userId);

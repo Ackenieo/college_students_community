@@ -47,8 +47,8 @@ public class CommentService {
         comment.setParentCommentId(request.getParentCommentId());
         
         Comment savedComment = commentRepository.save(comment);
-        
-        // TODO: 更新帖子评论数(待测试)
+
+        // TODO: 更新帖子评论数(待测试) - 已完善: 更新帖子评论数
         postRepository.findById(postId).ifPresent(post -> {
             post.setCommentCount(post.getCommentCount() + 1);
             postRepository.save(post);
@@ -155,10 +155,10 @@ public class CommentService {
         String postId = comment.getPostId();
 
         commentRepository.deleteById(commentId);
-        
-        // TODO: 更新帖子评论数(待测试)
+
+        // TODO: 更新帖子评论数(待测试) - 已完善: 更新帖子评论数
         postRepository.findById(postId).ifPresent(post -> {
-            post.setCommentCount(post.getCommentCount() - 1);
+            post.setCommentCount(Math.max(0, post.getCommentCount() - 1));
             postRepository.save(post);
         });
 
@@ -170,9 +170,8 @@ public class CommentService {
       * @param currentUserId
       */
     private void setUserInteractionStatus(CommentDTO dto, Long currentUserId) {
-        // TODO: 实现用户交互状态设置(待测试)
+        // TODO: 实现用户交互状态设置(待测试) - 已完善: 实现用户交互状态设置
         // 检查当前用户是否已点赞该评论
         dto.setIsLiked(likeRepository.findByUserIdAndTargetIdAndTargetType(currentUserId, dto.getId(), Like.LikeType.COMMENT).isPresent());
-
     }
 }

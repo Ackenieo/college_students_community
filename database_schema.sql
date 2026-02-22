@@ -109,6 +109,40 @@ CREATE TABLE IF NOT EXISTS user_follows (
     INDEX idx_following_id (following_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户关注表';
 
+-- 黑名单表  new
+CREATE TABLE IF NOT EXISTS blacklist (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '黑名单ID',
+    user_id BIGINT NOT NULL COMMENT '用户ID',
+    blocked_user_id BIGINT NOT NULL COMMENT '被拉黑的用户ID',
+    reason VARCHAR(500) COMMENT '拉黑原因',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (blocked_user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY uk_user_blocked (user_id, blocked_user_id),
+    INDEX idx_user_id (user_id),
+    INDEX idx_blocked_user_id (blocked_user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='黑名单表';
+
+-- 通知表 (new)
+CREATE TABLE IF NOT EXISTS notifications (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '通知ID',
+    receiver_id BIGINT NOT NULL COMMENT '接收者ID',
+    sender_id BIGINT COMMENT '发送者ID',
+    sender_nickname VARCHAR(100) COMMENT '发送者昵称',
+    sender_avatar VARCHAR(500) COMMENT '发送者头像',
+    notification_type VARCHAR(50) NOT NULL COMMENT '通知类型',
+    content TEXT COMMENT '通知内容',
+    is_read BOOLEAN NOT NULL DEFAULT FALSE COMMENT '是否已读',
+    target_id VARCHAR(50) COMMENT '目标ID(帖子ID、评论ID等)',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_receiver_id (receiver_id),
+    INDEX idx_is_read (is_read),
+    INDEX idx_receiver_read (receiver_id, is_read)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='通知表';
+
 -- 举报表
 CREATE TABLE IF NOT EXISTS reports (
     id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '举报ID',

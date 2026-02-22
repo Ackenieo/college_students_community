@@ -43,10 +43,10 @@ public class MessageService {
         message.setStatus(Message.MessageStatus.SENT);
         
         Message savedMessage = messageRepository.save(message);
-        
-        // TODO: 发送实时通知
-        // notificationService.sendMessageNotification(request.getReceiverId(), senderId);
-        
+
+        // TODO: 发送实时通知 - 已完善: 调用NotificationService发送实时通知
+        notificationService.sendMessageNotification(request.getReceiverId(), senderId, senderUsername, request.getContent());
+
         return savedMessage;
     }
     

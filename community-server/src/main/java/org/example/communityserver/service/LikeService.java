@@ -20,6 +20,9 @@ public class LikeService {
     
     @Autowired
     private CommentService commentService;
+
+    @Autowired
+    private org.example.communityserver.repository.CommentRepository commentRepository;
     
     public boolean toggleLike(Long userId, String targetId, Like.LikeType targetType) {
         Optional<Like> existingLike = likeRepository.findByUserIdAndTargetIdAndTargetType(userId, targetId, targetType);
@@ -54,7 +57,12 @@ public class LikeService {
         if (targetType == Like.LikeType.POST) {
             postService.updatePostStats(targetId);
         } else if (targetType == Like.LikeType.COMMENT) {
-            // TODO: 更新评论点赞数
+            // TODO: 更新评论点赞数 - 已完善: 更新评论点赞数
+            commentRepository.findById(targetId).ifPresent(comment -> {
+                int newLikeCount = Math.max(0, comment.getLikeCount() + delta);
+                comment.setLikeCount(newLikeCount);
+                commentRepository.save(comment);
+            });
         }
     }
 }
