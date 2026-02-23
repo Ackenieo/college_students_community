@@ -1,5 +1,6 @@
 package org.example.userserver.vo;
 
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
@@ -16,10 +17,13 @@ import jakarta.validation.constraints.Size;
 @AllArgsConstructor
 public class PasswordResetRequestVO {
     
-    @NotBlank(message = "邮箱不能为空")
-    @Email(message = "邮箱格式不正确")
-    private String email;
-    
+    @NotBlank(message = "用户认证信息不能为空")
+    @Email(message = "用户认证信息不正确")
+    private String verifyInfo;
+
+    @NotNull(message = "模式信息不能为空")
+    private Short mode; // 0 为邮箱认证模式， 1 为手机号认证模式
+
     @NotBlank(message = "验证码不能为空")
     private String code;
     

@@ -161,21 +161,29 @@ public class UserService {
     
     public void resetPassword(PasswordResetRequestVO request) {
         // 验证邮箱验证码
-        if (!verifyCodeService.verifyCode(request.getEmail(), request.getCode())) {
+        if (!verifyCodeService.verifyCode(request.getVerifyInfo(), request.getCode())) {
             throw new RuntimeException("验证码错误或已过期");
         }
-        
+
+        User user = null;
         // 查找用户
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("用户不存在"));
-        
+        if (request.getMode().equals(0)) {
+
+            user = userRepository.findByEmail(request.getVerifyInfo())
+                    .orElseThrow(() -> new RuntimeException("用户不存在"));
+        }else if (request.getMode().equals(1)) {
+            user = userRepository.findByPhone(request.getVerifyInfo())
+                    .orElseThrow(() -> new RuntimeException("用户不存在"));
+
+        }
+
         // 更新密码
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
         cacheUser(user);
         
         // 清除验证码
-        verifyCodeService.clearCode(request.getEmail());
+        verifyCodeService.clearCode(request.getVerifyInfo());
     }
 
     /**

@@ -36,8 +36,8 @@ public class VerifyCodeService {
         return code;
     }
 
-    public boolean verifyCode(String email, String code) {
-        String key = buildKey(email);
+    public boolean verifyCode(String verfiyInfo, String code) {
+        String key = buildKey(verfiyInfo);
         String value = stringRedisTemplate.opsForValue().get(key);
         return value != null && value.equals(code);
     }

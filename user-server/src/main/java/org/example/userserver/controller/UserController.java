@@ -43,7 +43,9 @@ public class UserController {
 
     
     // ==================== 用户注册接口 ====================
-    
+
+    // ====================邮箱=======================
+
     /**
      * 用户注册（邮箱验证码）
      * @param request 注册请求，包含用户名、邮箱、密码和验证码
@@ -87,7 +89,7 @@ public class UserController {
      * @param request 发送验证码请求，包含用户邮箱
      * @return 发送结果
      */
-    @PostMapping("/send-reset-code")
+    @PostMapping("/send-reset-code-to-email")
     public Result<String> sendPasswordResetCode(@Valid @RequestBody SendVerificationCodeRequestVO request) {
         try {
             userService.sendPasswordResetCode(request.getEmail());
@@ -96,6 +98,8 @@ public class UserController {
             return Result.error(ResultCode.EMAIL_SEND_FAILED.getCode(), "发送失败: " + e.getMessage());
         }
     }
+
+
     
     /**
      * 重置密码

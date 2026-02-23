@@ -13,7 +13,10 @@ public class CommonUtil {
     
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final String EMAIL_REGEX = "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$";
+    // 仅+86
+    private static final String PHONE_REGEX = "^1[3-9]\\\\d{9}$";
     private static final Pattern EMAIL_PATTERN = Pattern.compile(EMAIL_REGEX);
+    private static final Pattern PHONE_PATTERN = Pattern.compile(PHONE_REGEX);
     
     /**
      * 生成UUID
@@ -38,7 +41,17 @@ public class CommonUtil {
         }
         return EMAIL_PATTERN.matcher(email.trim()).matches();
     }
-    
+
+    /**
+     * 验证手机号格式
+     */
+    public static boolean isValidPhone(String phone) {
+        if (phone == null || phone.trim().isEmpty()) {
+            return false;
+        }
+        return PHONE_PATTERN.matcher(phone.trim()).matches();
+    }
+
     /**
      * 验证用户名格式（3-20位字母数字下划线）
      */
@@ -133,5 +146,34 @@ public class CommonUtil {
      */
     public static String safeString(String str) {
         return str == null ? "" : str;
+    }
+
+    /**
+     * 基础数据类型与数组检查
+     */
+    public static boolean isPrimitiveOrWrapperOrArray(Class<?> clazz) {
+        return clazz.isPrimitive() ||
+                clazz == String.class || clazz == Integer.class || clazz == Long.class ||
+                clazz == Double.class || clazz == Float.class || clazz == Boolean.class ||
+                clazz == Character.class || clazz == Byte.class || clazz == Short.class ||
+                clazz.isArray();
+    }
+
+    /**
+     * 集合与Map检查
+     */
+    public static boolean isIterableOrMap(Object obj) {
+        return obj instanceof Iterable ||
+                obj instanceof java.util.Map;
+    }
+
+    /**
+     * java、spring基础包检查
+     */
+    public static boolean isFromSpringOrJDK(Class<?> clazz) {
+        String packageName = clazz.getPackageName();
+        return packageName.startsWith("java.") ||
+                packageName.startsWith("javax.") ||
+                packageName.startsWith("org.springframework.");
     }
 }
