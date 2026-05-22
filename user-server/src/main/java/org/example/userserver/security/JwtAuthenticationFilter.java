@@ -44,7 +44,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 log.warn("JWT token解析失败: {}", e.getMessage(), e);
             }
         }
-        
+
+        if (username == null && request.getHeader("X-User-Id") != null) {
+            UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                    request.getHeader("X-User-Username"), null, new ArrayList<>());
+            authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+            SecurityContextHolder.getContext().setAuthentication(authToken);
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             if (jwtUtil.validateToken(jwt, username)) {
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(

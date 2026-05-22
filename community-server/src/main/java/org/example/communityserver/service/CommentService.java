@@ -39,6 +39,13 @@ public class CommentService {
      */
     @Transactional(rollbackFor = Exception.class)
     public CommentDTO createComment(String postId, Long authorId, String authorUsername, CreateCommentRequest request) {
+        if (!postRepository.existsById(postId)) {
+            throw new RuntimeException("帖子不存在");
+        }
+        if (request.getParentCommentId() != null && !commentRepository.existsById(request.getParentCommentId())) {
+            throw new RuntimeException("父评论不存在");
+        }
+
         Comment comment = new Comment();
         comment.setPostId(postId);
         comment.setAuthorId(authorId);
@@ -170,8 +177,10 @@ public class CommentService {
       * @param currentUserId
       */
     private void setUserInteractionStatus(CommentDTO dto, Long currentUserId) {
-        // TODO: 实现用户交互状态设置(待测试) - 已完善: 实现用户交互状态设置
-        // 检查当前用户是否已点赞该评论
+        if (currentUserId == null) {
+            dto.setIsLiked(false);
+            return;
+        }
         dto.setIsLiked(likeRepository.findByUserIdAndTargetIdAndTargetType(currentUserId, dto.getId(), Like.LikeType.COMMENT).isPresent());
     }
 }

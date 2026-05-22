@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -105,8 +106,11 @@ public class PostService {
     }
     
     public Page<PostDTO> getHotPosts(int page, int size, Long currentUserId) {
-        Pageable pageable = PageRequest.of(page, size);
-        Page<Post> posts = postRepository.findApprovedPostsOrderByLikeCountDesc(pageable);
+        Pageable pageable = PageRequest.of(page, size, Sort.by(
+                Sort.Order.desc("likeCount"),
+                Sort.Order.desc("commentCount"),
+                Sort.Order.desc("createdAt")));
+        Page<Post> posts = postRepository.findApprovedPosts(pageable);
         
         return posts.map(post -> {
             PostDTO dto = PostDTO.fromEntity(post);
@@ -148,8 +152,11 @@ public class PostService {
     }
     
     private void setUserInteractionStatus(PostDTO dto, Long currentUserId) {
-        // TODO: 实现用户交互状态设置 - 已完善: 实现用户交互状态设置
-        // 检查当前用户是否已点赞、收藏该帖子
+        if (currentUserId == null) {
+            dto.setIsLiked(false);
+            dto.setIsFavorited(false);
+            return;
+        }
         dto.setIsLiked(likeRepository.findByUserIdAndTargetIdAndTargetType(currentUserId, dto.getId(), org.example.communityserver.entity.Like.LikeType.POST).isPresent());
         dto.setIsFavorited(favoriteRepository.findByUserIdAndPostId(currentUserId, dto.getId()).isPresent());
     }

@@ -186,6 +186,40 @@ public class UserService {
         verifyCodeService.clearCode(request.getVerifyInfo());
     }
 
+    public UserDTO updateProfile(Long userId, UpdateUserRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("用户不存在"));
+
+        if (request.getUsername() != null && !request.getUsername().equals(user.getUsername())) {
+            if (userRepository.existsByUsername(request.getUsername())) {
+                throw new RuntimeException("用户名已存在");
+            }
+            user.setUsername(request.getUsername());
+        }
+        if (request.getEmail() != null && !request.getEmail().equals(user.getEmail())) {
+            if (userRepository.existsByEmail(request.getEmail())) {
+                throw new RuntimeException("邮箱已存在");
+            }
+            user.setEmail(request.getEmail());
+        }
+        if (request.getNickname() != null) {
+            user.setNickname(request.getNickname());
+        }
+        if (request.getAvatar() != null) {
+            user.setAvatar(request.getAvatar());
+        }
+        if (request.getFullName() != null) {
+            user.setFullName(request.getFullName());
+        }
+        if (request.getPhone() != null) {
+            user.setPhone(request.getPhone());
+        }
+
+        User savedUser = userRepository.save(user);
+        cacheUser(savedUser);
+        return UserDTO.fromEntity(savedUser);
+    }
+
     /**
      * 根据用户ID获取用户信息
      * @param userId 用户ID

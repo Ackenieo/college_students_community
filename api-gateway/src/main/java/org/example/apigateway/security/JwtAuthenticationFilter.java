@@ -32,9 +32,11 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         "/users/register",
         "/users/register-with-verification",
         "/users/send-register-code",
-        "/users/send-reset-code",
+        "/users/send-reset-code-to-email",
         "/users/reset-password",
         "/users/email",
+        "/posts",
+        "/comments",
         "/health",
         "/actuator"
     );
@@ -76,7 +78,14 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
     }
     
     private boolean isPublicPath(String path) {
-        return PUBLIC_PATHS.stream().anyMatch(path::startsWith);
+        String normalizedPath = path;
+        if (path.startsWith("/api/users/")) {
+            normalizedPath = path.substring("/api".length());
+        }
+        if (path.startsWith("/api/community/")) {
+            normalizedPath = path.substring("/api/community".length());
+        }
+        return PUBLIC_PATHS.stream().anyMatch(normalizedPath::startsWith);
     }
     
     private String getTokenFromRequest(ServerHttpRequest request) {

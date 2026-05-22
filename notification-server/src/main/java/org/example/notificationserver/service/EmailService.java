@@ -95,6 +95,7 @@ public class EmailService {
             logger.info("发送邮件成功，to={}, subject={}", request.getTo(), request.getSubject());
         } catch (Exception e) {
             logger.error("发送邮件失败，to={}, subject={}", request.getTo(), request.getSubject(), e);
+            throw new IllegalStateException("发送邮件失败", e);
         }
     }
     

@@ -28,7 +28,7 @@ public class SecurityConfig {
                 // 公开接口
                 .requestMatchers("/users/health", "/actuator/**").permitAll()
                 .requestMatchers("/users/login", "/users/register", "/users/register-with-verification").permitAll()
-                .requestMatchers("/users/send-register-code", "/users/send-reset-code", "/users/reset-password").permitAll()
+                .requestMatchers("/users/send-register-code", "/users/send-reset-code-to-email", "/users/reset-password").permitAll()
                 .requestMatchers("/users/email/**").permitAll()
                 // 其他接口需要认证
                 .anyRequest().authenticated()

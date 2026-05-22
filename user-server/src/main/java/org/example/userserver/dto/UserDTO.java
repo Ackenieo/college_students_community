@@ -18,6 +18,8 @@ public class UserDTO {
     private Long id;
     private String username;
     private String email;
+    private String nickname;
+    private String avatar;
     private String fullName;
     private String phone;
     private User.UserRole role;
@@ -31,6 +33,8 @@ public class UserDTO {
         dto.setId(user.getId());
         dto.setUsername(user.getUsername());
         dto.setEmail(user.getEmail());
+        dto.setNickname(user.getNickname());
+        dto.setAvatar(user.getAvatar());
         dto.setFullName(user.getFullName());
         dto.setPhone(user.getPhone());
         dto.setRole(user.getRole());

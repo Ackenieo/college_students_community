@@ -27,9 +27,9 @@ public interface PostRepository extends MongoRepository<Post, String> {
     @Query("{$and: [{'status': 'APPROVED'}, {$or: [{'title': {$regex: ?0, $options: 'i'}}, {'content': {$regex: ?0, $options: 'i'}}]}]}")
     Page<Post> searchPosts(String keyword, Pageable pageable);
     
-    // 查找热门帖子（按点赞数排序）
+    // 查找热门帖子
     @Query("{'status': 'APPROVED'}")
-    Page<Post> findApprovedPostsOrderByLikeCountDesc(Pageable pageable);
+    Page<Post> findApprovedPosts(Pageable pageable);
     
     // 根据ID和作者ID查找帖子
     Optional<Post> findByIdAndAuthorId(String id, Long authorId);

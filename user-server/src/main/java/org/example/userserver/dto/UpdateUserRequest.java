@@ -17,7 +17,13 @@ public class UpdateUserRequest {
     
     @Size(min = 3, max = 50, message = "用户名长度必须在3-50个字符之间")
     private String username;
-    
+
+    @Size(max = 50, message = "昵称长度不能超过50个字符")
+    private String nickname;
+
+    @Size(max = 500, message = "头像地址长度不能超过500个字符")
+    private String avatar;
+
     @Email(message = "邮箱格式不正确")
     private String email;
     

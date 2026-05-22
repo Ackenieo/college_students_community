@@ -116,6 +116,18 @@ public class UserController {
         }
     }
 
+    @PutMapping("/profile")
+    public Result<UserDTO> updateProfile(
+            @RequestHeader("X-User-Id") Long userId,
+            @Valid @RequestBody UpdateUserRequest request) {
+        try {
+            UserDTO userDTO = userService.updateProfile(userId, request);
+            return Result.success("更新用户资料成功", userDTO);
+        } catch (Exception e) {
+            return Result.error(ResultCode.BAD_REQUEST.getCode(), "更新用户资料失败: " + e.getMessage());
+        }
+    }
+
     /**
      * 根据用户ID获取用户信息
      * @param userId 用户ID

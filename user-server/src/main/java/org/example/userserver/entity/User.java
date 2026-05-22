@@ -37,6 +37,12 @@ public class User {
     @Column(nullable = false)
     private String password;
     
+    @Size(max = 50, message = "昵称长度不能超过50个字符")
+    private String nickname;
+
+    @Size(max = 500, message = "头像地址长度不能超过500个字符")
+    private String avatar;
+
     @Size(max = 100, message = "姓名长度不能超过100个字符")
     private String fullName;
     
