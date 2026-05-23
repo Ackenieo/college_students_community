@@ -4,7 +4,6 @@ import org.example.common.dto.UserDTO;
 import org.example.common.exception.InvalidOperationException;
 import org.example.common.result.Result;
 import org.example.common.result.ResultCode;
-import org.example.communityserver.dto.FriendNotificationDTO;
 import org.example.communityserver.dto.FriendshipRequest;
 import org.example.communityserver.entity.Friendship;
 import org.example.communityserver.mq.produce.FriendNotificationProduce;
@@ -27,7 +26,6 @@ import java.util.concurrent.TimeUnit;
 
 import static org.example.common.constant.CommonConstants.CacheExpire.FRIENDSHIP_CACHE;
 import static org.example.common.constant.CommonConstants.CacheKeyPrefix.FRIENDSHIP;
-import static org.example.common.constant.CommonConstants.NotificationType.FRIEND_REQUEST;
 
 @Service
 @Transactional
@@ -37,9 +35,9 @@ public class FriendshipService {
 
     @Autowired
     private FriendshipRepository friendshipRepository;
-    
+
     @Autowired
-    private NotificationService notificationService; // 用于发送好友申请通知
+    private CommunityNotificationService communityNotificationService;
 
     @Autowired
     private UserRemoteService userRemoteService;
@@ -52,9 +50,6 @@ public class FriendshipService {
 
     @Autowired
     private FriendRequestExpireProduce friendRequestExpireProduce;
-
-    @Autowired
-    private FriendNotificationProduce friendNotificationProduce;
 
     //先前版本
 //    public Friendship sendFriendRequestV1(Long userId, Long friendId) {
@@ -112,24 +107,8 @@ public class FriendshipService {
         // 好友申请7天后自动过期
         friendRequestExpireProduce.sendFriendRequestExpireMessage(userId, friendId, savedFriendship.getId(), 7 * 24 * 60 * 60 * 1000L);
 
-        // 创建申请通知
         UserDTO sender = getExistingUser(userId);
-        FriendNotificationDTO friendNotificationDTO = FriendNotificationDTO.builder()
-                        .senderId(userId)
-                        .notificationType(FRIEND_REQUEST)
-                        .requestMessage(request.getRequestMessage())
-                        .senderNickname(sender.getNickname())
-                        .senderAvatar(sender.getAvatar())
-                        .createTime(LocalDateTime.now())
-                        .build();
-
-        // TODO: 准备改消息队列异步实现 - 已完善: 使用FriendNotificationProduce异步发送通知
-        org.example.communityserver.mq.event.FriendNotificationEvent notificationEvent =
-                org.example.communityserver.mq.event.FriendNotificationEvent.builder()
-                        .receiverId(friendId)
-                        .friendNotificationDTO(friendNotificationDTO)
-                        .build();
-        friendNotificationProduce.sendFriendNotification(notificationEvent);
+        communityNotificationService.sendFriendRequestNotification(friendId, userId, sender.getNickname(), request.getRequestMessage());
 
         return savedFriendship;
     }
@@ -190,6 +169,8 @@ public class FriendshipService {
             reverseFriendship.setFriendId(friendId);
             reverseFriendship.setStatus(Friendship.FriendshipStatus.ACCEPTED);
             friendshipRepository.save(reverseFriendship);
+            UserDTO accepter = getExistingUser(userId);
+            communityNotificationService.sendFriendAcceptedNotification(friendId, userId, accepter.getNickname());
         }
 
         return friendshipRepository.save(friendship);

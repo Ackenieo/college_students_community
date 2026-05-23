@@ -227,6 +227,7 @@ services:
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
       SPRING_DATA_REDIS_PASSWORD: 123456
+      SPRING_DATA_MONGODB_URI: mongodb://root:123456@mongodb:27017/college_community?authSource=admin
       SPRING_RABBITMQ_HOST: rabbitmq
       SPRING_RABBITMQ_PORT: 5672
       SPRING_RABBITMQ_USERNAME: root
@@ -241,6 +242,8 @@ services:
       - "8084:8084"
     depends_on:
       redis:
+        condition: service_healthy
+      mongodb:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy

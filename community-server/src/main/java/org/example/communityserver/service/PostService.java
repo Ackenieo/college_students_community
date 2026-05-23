@@ -1,5 +1,6 @@
 package org.example.communityserver.service;
 
+import org.example.communityserver.config.ReviewFallbackProperties;
 import org.example.communityserver.dto.CreatePostRequest;
 import org.example.communityserver.dto.PostDTO;
 import org.example.communityserver.entity.Post;
@@ -27,6 +28,9 @@ public class PostService {
 
     @Autowired
     private AgentService agentService; // 用于内容审核
+
+    @Autowired
+    private ReviewFallbackProperties reviewFallbackProperties;
 
     @Autowired
     private LikeRepository likeRepository; // 用于检查点赞状态
@@ -162,6 +166,9 @@ public class PostService {
     }
     
     private void reviewPostContent(Post post) {
+        if (!reviewFallbackProperties.isAiReviewEnabled() && applyReviewFallback(post, "AI_REVIEW_DISABLED", "第一阶段审核兜底通过")) {
+            return;
+        }
         try {
             // 调用Agent服务进行内容审核
             String reviewResult = agentService.reviewContent(post.getContent());
@@ -184,12 +191,26 @@ public class PostService {
 
             postRepository.save(post);
         } catch (Exception e) {
-            // 审核失败，标记为待审核
-            post.setStatus(Post.PostStatus.PENDING);
-            post.setReviewResult("PENDING");
-            post.setReviewReason("审核服务暂时不可用");
-            postRepository.save(post);
+            if (!applyReviewFallback(post, "AI_REVIEW_UNAVAILABLE", "审核服务暂时不可用，第一阶段审核兜底通过")) {
+                // 审核失败，标记为待审核
+                post.setStatus(Post.PostStatus.PENDING);
+                post.setReviewResult("PENDING");
+                post.setReviewReason("审核服务暂时不可用");
+                postRepository.save(post);
+            }
         }
+    }
+
+    private boolean applyReviewFallback(Post post, String result, String reason) {
+        if (!reviewFallbackProperties.isEnabled() || !reviewFallbackProperties.isApproveOnUnavailable()) {
+            return false;
+        }
+        post.setStatus(Post.PostStatus.APPROVED);
+        post.setPublishedAt(LocalDateTime.now());
+        post.setReviewResult(result);
+        post.setReviewReason(reason);
+        postRepository.save(post);
+        return true;
     }
     
     public void updatePostStats(String postId) {

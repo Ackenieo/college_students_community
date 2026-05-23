@@ -30,6 +30,9 @@ public class LikeService {
     @Autowired
     private CommentRepository commentRepository;
 
+    @Autowired
+    private CommunityNotificationService communityNotificationService;
+
     public boolean toggleLike(Long userId, String targetId, Like.LikeType targetType) {
         validateLikeTarget(targetId, targetType);
         Optional<Like> existingLike = likeRepository.findByUserIdAndTargetIdAndTargetType(userId, targetId, targetType);
@@ -48,6 +51,7 @@ public class LikeService {
             
             likeRepository.save(like);
             updateTargetLikeCount(targetId, targetType, 1);
+            notifyLikeOwner(userId, targetId, targetType);
             return true;
         }
     }
@@ -70,6 +74,18 @@ public class LikeService {
         if (targetType == Like.LikeType.COMMENT && !commentRepository.existsById(targetId)) {
             throw new RuntimeException("评论不存在");
         }
+    }
+
+    private void notifyLikeOwner(Long userId, String targetId, Like.LikeType targetType) {
+        if (targetType == Like.LikeType.POST) {
+            postRepository.findById(targetId)
+                    .filter(post -> !post.getAuthorId().equals(userId))
+                    .ifPresent(post -> communityNotificationService.sendPostLikeNotification(post.getAuthorId(), userId, targetId));
+            return;
+        }
+        commentRepository.findById(targetId)
+                .filter(comment -> !comment.getAuthorId().equals(userId))
+                .ifPresent(comment -> communityNotificationService.sendCommentLikeNotification(comment.getAuthorId(), userId, targetId, comment.getPostId()));
     }
 
     private void updateTargetLikeCount(String targetId, Like.LikeType targetType, int delta) {

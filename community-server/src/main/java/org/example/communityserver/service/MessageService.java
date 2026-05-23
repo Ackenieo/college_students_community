@@ -26,9 +26,9 @@ public class MessageService {
     
     @Autowired
     private FriendshipService friendshipService; // 用于验证好友关系
-    
+
     @Autowired
-    private NotificationService notificationService; // 用于实时通知
+    private CommunityNotificationService communityNotificationService;
 
     @Autowired
     private UserRemoteService userRemoteService;
@@ -50,8 +50,7 @@ public class MessageService {
         
         Message savedMessage = messageRepository.save(message);
 
-        // TODO: 发送实时通知 - 已完善: 调用NotificationService发送实时通知
-        notificationService.sendMessageNotification(request.getReceiverId(), senderId, senderUsername, request.getContent());
+        communityNotificationService.sendMessageNotification(request.getReceiverId(), senderId, senderUsername, request.getContent());
 
         return savedMessage;
     }

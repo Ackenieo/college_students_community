@@ -4,6 +4,7 @@ import org.example.communityserver.dto.CommentDTO;
 import org.example.communityserver.dto.CreateCommentRequest;
 import org.example.communityserver.entity.Comment;
 import org.example.communityserver.entity.Like;
+import org.example.communityserver.entity.Post;
 import org.example.communityserver.repository.CommentRepository;
 import org.example.communityserver.repository.LikeRepository;
 import org.example.communityserver.repository.PostRepository;
@@ -28,6 +29,8 @@ public class CommentService {
     private LikeRepository likeRepository;
     @Autowired
     private PostRepository postRepository;
+    @Autowired
+    private CommunityNotificationService communityNotificationService;
 
     /**
      * 创建评论
@@ -59,10 +62,24 @@ public class CommentService {
         postRepository.findById(postId).ifPresent(post -> {
             post.setCommentCount(post.getCommentCount() + 1);
             postRepository.save(post);
+            notifyPostAuthor(post, savedComment);
         });
 
         return CommentDTO.fromEntity(savedComment);
     }
+    private void notifyPostAuthor(Post post, Comment comment) {
+        if (post.getAuthorId().equals(comment.getAuthorId())) {
+            return;
+        }
+        communityNotificationService.sendPostCommentNotification(
+                post.getAuthorId(),
+                comment.getAuthorId(),
+                comment.getAuthorUsername(),
+                post.getId(),
+                comment.getId(),
+                comment.getContent());
+    }
+
     /**
      * 获取帖子的所有评论（包括回复）
      * @param postId
