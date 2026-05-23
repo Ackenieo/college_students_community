@@ -2,12 +2,14 @@ package org.example.communityserver.service;
 
 import org.example.communityserver.entity.Favorite;
 import org.example.communityserver.repository.FavoriteRepository;
+import org.example.communityserver.repository.PostRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.util.Optional;
 
@@ -20,8 +22,12 @@ public class FavoriteService {
     
     @Autowired
     private PostService postService;
-    
+
+    @Autowired
+    private PostRepository postRepository;
+
     public boolean toggleFavorite(Long userId, String postId) {
+        validatePostExists(postId);
         Optional<Favorite> existingFavorite = favoriteRepository.findByUserIdAndPostId(userId, postId);
         
         if (existingFavorite.isPresent()) {
@@ -50,5 +56,14 @@ public class FavoriteService {
     
     public long getFavoriteCount(String postId) {
         return favoriteRepository.countByPostId(postId);
+    }
+
+    private void validatePostExists(String postId) {
+        if (!StringUtils.hasText(postId)) {
+            throw new RuntimeException("帖子不能为空");
+        }
+        if (!postRepository.existsById(postId)) {
+            throw new RuntimeException("帖子不存在");
+        }
     }
 }

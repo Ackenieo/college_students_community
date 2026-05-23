@@ -1,10 +1,13 @@
 package org.example.communityserver.service;
 
 import org.example.communityserver.entity.Like;
+import org.example.communityserver.repository.CommentRepository;
 import org.example.communityserver.repository.LikeRepository;
+import org.example.communityserver.repository.PostRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.util.Optional;
 
@@ -22,9 +25,13 @@ public class LikeService {
     private CommentService commentService;
 
     @Autowired
-    private org.example.communityserver.repository.CommentRepository commentRepository;
-    
+    private PostRepository postRepository;
+
+    @Autowired
+    private CommentRepository commentRepository;
+
     public boolean toggleLike(Long userId, String targetId, Like.LikeType targetType) {
+        validateLikeTarget(targetId, targetType);
         Optional<Like> existingLike = likeRepository.findByUserIdAndTargetIdAndTargetType(userId, targetId, targetType);
         
         if (existingLike.isPresent()) {
@@ -53,6 +60,18 @@ public class LikeService {
         return likeRepository.countByTargetIdAndTargetType(targetId, targetType);
     }
     
+    private void validateLikeTarget(String targetId, Like.LikeType targetType) {
+        if (!StringUtils.hasText(targetId)) {
+            throw new RuntimeException("点赞目标不能为空");
+        }
+        if (targetType == Like.LikeType.POST && !postRepository.existsById(targetId)) {
+            throw new RuntimeException("帖子不存在");
+        }
+        if (targetType == Like.LikeType.COMMENT && !commentRepository.existsById(targetId)) {
+            throw new RuntimeException("评论不存在");
+        }
+    }
+
     private void updateTargetLikeCount(String targetId, Like.LikeType targetType, int delta) {
         if (targetType == Like.LikeType.POST) {
             postService.updatePostStats(targetId);

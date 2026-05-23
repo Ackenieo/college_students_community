@@ -28,6 +28,7 @@ public class WebSocketService {
     
     // 在线用户会话管理
     private final ConcurrentHashMap<String, String> userSessions = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, String> sessionUsers = new ConcurrentHashMap<>();
     
     public void sendNotificationToUser(String userId, Notification notification) {
         try {
@@ -88,14 +89,26 @@ public class WebSocketService {
     
     public void addUserSession(String userId, String sessionId) {
         userSessions.put(userId, sessionId);
+        sessionUsers.put(sessionId, userId);
         logger.info("用户上线: userId={}, sessionId={}", userId, sessionId);
     }
-    
+
     public void removeUserSession(String userId) {
-        userSessions.remove(userId);
+        String sessionId = userSessions.remove(userId);
+        if (sessionId != null) {
+            sessionUsers.remove(sessionId);
+        }
         logger.info("用户下线: userId={}", userId);
     }
-    
+
+    public void removeSession(String sessionId) {
+        String userId = sessionUsers.remove(sessionId);
+        if (userId != null) {
+            userSessions.remove(userId);
+            logger.info("用户会话断开: userId={}, sessionId={}", userId, sessionId);
+        }
+    }
+
     public boolean isUserOnline(String userId) {
         return userSessions.containsKey(userId);
     }

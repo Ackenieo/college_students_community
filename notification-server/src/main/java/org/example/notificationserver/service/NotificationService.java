@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,15 +51,15 @@ public class NotificationService {
     
     public Page<Notification> getUserNotifications(Long userId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
-        return notificationRepository.findByReceiverIdOrderByCreatedAtDesc(userId, pageable);
+        return notificationRepository.findActiveByReceiverId(userId, LocalDateTime.now(), pageable);
     }
-    
+
     public List<Notification> getUnreadNotifications(Long userId) {
-        return notificationRepository.findByReceiverIdAndStatusOrderByCreatedAtDesc(userId, Notification.NotificationStatus.UNREAD);
+        return notificationRepository.findActiveByReceiverIdAndStatus(userId, Notification.NotificationStatus.UNREAD, LocalDateTime.now());
     }
-    
+
     public long getUnreadCount(Long userId) {
-        return notificationRepository.countByReceiverIdAndStatus(userId, Notification.NotificationStatus.UNREAD);
+        return notificationRepository.countActiveUnreadByReceiverId(userId, LocalDateTime.now());
     }
     
     public Notification markAsRead(String notificationId, Long userId) {
@@ -73,7 +74,7 @@ public class NotificationService {
     }
     
     public void markAllAsRead(Long userId) {
-        List<Notification> unreadNotifications = notificationRepository.findByReceiverIdAndStatusOrderByCreatedAtDesc(userId, Notification.NotificationStatus.UNREAD);
+        List<Notification> unreadNotifications = notificationRepository.findActiveByReceiverIdAndStatus(userId, Notification.NotificationStatus.UNREAD, LocalDateTime.now());
         for (Notification notification : unreadNotifications) {
             notification.setStatus(Notification.NotificationStatus.READ);
             notification.setReadAt(LocalDateTime.now());
@@ -90,8 +91,9 @@ public class NotificationService {
         }
     }
     
+    @Scheduled(fixedDelay = 3600000)
     public void deleteExpiredNotifications() {
-        List<Notification> expiredNotifications = notificationRepository.findByExpireAtBefore(LocalDateTime.now());
+        List<Notification> expiredNotifications = notificationRepository.findByExpireAtBeforeAndStatusNotDeleted(LocalDateTime.now());
         for (Notification notification : expiredNotifications) {
             notification.setStatus(Notification.NotificationStatus.DELETED);
             notificationRepository.save(notification);

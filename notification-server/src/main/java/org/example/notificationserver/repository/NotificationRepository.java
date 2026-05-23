@@ -15,20 +15,23 @@ import java.util.Optional;
 public interface NotificationRepository extends MongoRepository<Notification, String> {
     
     // 根据接收者ID查找通知
-    Page<Notification> findByReceiverIdOrderByCreatedAtDesc(Long receiverId, Pageable pageable);
-    
+    @Query("{'receiverId': ?0, 'status': {$ne: 'DELETED'}, $or: [{'expireAt': null}, {'expireAt': {$gt: ?1}}]}")
+    Page<Notification> findActiveByReceiverId(Long receiverId, LocalDateTime now, Pageable pageable);
+
     // 根据接收者ID和状态查找通知
-    List<Notification> findByReceiverIdAndStatusOrderByCreatedAtDesc(Long receiverId, Notification.NotificationStatus status);
+    @Query("{'receiverId': ?0, 'status': ?1, $or: [{'expireAt': null}, {'expireAt': {$gt: ?2}}]}")
+    List<Notification> findActiveByReceiverIdAndStatus(Long receiverId, Notification.NotificationStatus status, LocalDateTime now);
     
     // 根据ID和接收者ID查找通知
     Optional<Notification> findByIdAndReceiverId(String id, Long receiverId);
     
     // 统计未读通知数量
-    @Query("{'receiverId': ?0, 'status': 'UNREAD'}")
-    long countByReceiverIdAndStatus(Long receiverId, Notification.NotificationStatus status);
+    @Query(value = "{'receiverId': ?0, 'status': 'UNREAD', $or: [{'expireAt': null}, {'expireAt': {$gt: ?1}}]}", count = true)
+    long countActiveUnreadByReceiverId(Long receiverId, LocalDateTime now);
     
     // 查找过期的通知
-    List<Notification> findByExpireAtBefore(LocalDateTime expireTime);
+    @Query("{'expireAt': {$lt: ?0}, 'status': {$ne: 'DELETED'}}")
+    List<Notification> findByExpireAtBeforeAndStatusNotDeleted(LocalDateTime expireTime);
     
     // 根据类型查找通知
     Page<Notification> findByReceiverIdAndTypeOrderByCreatedAtDesc(Long receiverId, Notification.NotificationType type, Pageable pageable);

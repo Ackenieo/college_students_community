@@ -1,7 +1,10 @@
 package org.example.communityserver.service;
 
+import org.example.common.dto.UserDTO;
+import org.example.common.result.Result;
 import org.example.communityserver.dto.MessageRequest;
 import org.example.communityserver.entity.Message;
+import org.example.communityserver.remote.UserRemoteService;
 import org.example.communityserver.repository.MessageRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -26,9 +29,12 @@ public class MessageService {
     
     @Autowired
     private NotificationService notificationService; // 用于实时通知
-    
+
+    @Autowired
+    private UserRemoteService userRemoteService;
+
     public Message sendMessage(Long senderId, String senderUsername, MessageRequest request) {
-        // 验证是否为好友关系
+        validateMessageTarget(senderId, request);
         if (!friendshipService.isFriend(senderId, request.getReceiverId())) {
             throw new RuntimeException("只能给好友发送消息");
         }
@@ -50,6 +56,27 @@ public class MessageService {
         return savedMessage;
     }
     
+    private void validateMessageTarget(Long senderId, MessageRequest request) {
+        if (!senderId.equals(request.getSenderId())) {
+            throw new RuntimeException("消息发送者与当前用户不一致");
+        }
+        if (senderId.equals(request.getReceiverId())) {
+            throw new RuntimeException("不能给自己发送消息");
+        }
+        UserDTO receiver = getExistingUser(request.getReceiverId());
+        if (receiver == null) {
+            throw new RuntimeException("接收者不存在");
+        }
+    }
+
+    private UserDTO getExistingUser(Long userId) {
+        Result<UserDTO> result = userRemoteService.getUserById(userId);
+        if (result == null || !result.isSuccess()) {
+            return null;
+        }
+        return result.getData();
+    }
+
     public Page<Message> getConversation(Long userId1, Long userId2, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
         return messageRepository.findConversationBetweenUsers(userId1, userId2, pageable);

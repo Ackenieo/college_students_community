@@ -8,6 +8,7 @@ import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
@@ -17,57 +18,51 @@ import reactor.core.publisher.Mono;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.List;
+import java.util.Set;
 
 @Component
 public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
-    
+
     @Value("${jwt.secret:college-students-secret-key-2024}")
     private String secret;
-    
-    // 不需要认证的路径
-    private static final List<String> PUBLIC_PATHS = Arrays.asList(
+
+    private static final Set<String> PUBLIC_AUTH_PATHS = Set.of(
         "/users/login",
         "/users/register",
         "/users/register-with-verification",
         "/users/send-register-code",
         "/users/send-reset-code-to-email",
         "/users/reset-password",
-        "/users/email",
-        "/posts",
-        "/comments",
-        "/health",
-        "/actuator"
+        "/users/email"
     );
-    
+
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         ServerHttpRequest request = exchange.getRequest();
         String path = request.getURI().getPath();
-        
+
         // 检查是否为公开路径
-        if (isPublicPath(path)) {
+        if (isPublicPath(request.getMethod(), path)) {
             return chain.filter(exchange);
         }
-        
+
         String token = getTokenFromRequest(request);
-        
+
         if (token == null) {
             return unauthorizedResponse(exchange, "缺少认证令牌");
         }
-        
+
         try {
             if (validateToken(token)) {
                 // 添加用户信息到请求头
                 Claims claims = getClaimsFromToken(token);
                 ServerHttpRequest modifiedRequest = request.mutate()
-                    .header("X-User-Id", claims.get("userId", String.class))
+                    .header("X-User-Id", String.valueOf(claims.get("userId")))
                     .header("X-User-Username", claims.getSubject())
                     .header("X-User-Email", claims.get("email", String.class))
                     .header("X-User-Role", claims.get("role", String.class))
                     .build();
-                
+
                 return chain.filter(exchange.mutate().request(modifiedRequest).build());
             } else {
                 return unauthorizedResponse(exchange, "无效的认证令牌");
@@ -76,18 +71,37 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             return unauthorizedResponse(exchange, "认证令牌验证失败");
         }
     }
-    
-    private boolean isPublicPath(String path) {
-        String normalizedPath = path;
+
+    private boolean isPublicPath(HttpMethod method, String path) {
+        String normalizedPath = normalizePath(path);
+        if (PUBLIC_AUTH_PATHS.contains(normalizedPath) || isHealthPath(normalizedPath)) {
+            return true;
+        }
+        return HttpMethod.GET.equals(method) && isPublicCommunityReadPath(normalizedPath);
+    }
+
+    private String normalizePath(String path) {
         if (path.startsWith("/api/users/")) {
-            normalizedPath = path.substring("/api".length());
+            return path.substring("/api".length());
         }
         if (path.startsWith("/api/community/")) {
-            normalizedPath = path.substring("/api/community".length());
+            return path.substring("/api/community".length());
         }
-        return PUBLIC_PATHS.stream().anyMatch(normalizedPath::startsWith);
+        if (path.startsWith("/api/notifications/")) {
+            return path.substring("/api".length());
+        }
+        return path;
     }
-    
+
+    private boolean isHealthPath(String path) {
+        return "/health".equals(path) || path.startsWith("/actuator") || "/notifications/health".equals(path);
+    }
+
+    private boolean isPublicCommunityReadPath(String path) {
+        return path.equals("/posts") || path.startsWith("/posts/") ||
+            path.equals("/comments") || path.startsWith("/comments/");
+    }
+
     private String getTokenFromRequest(ServerHttpRequest request) {
         String authorizationHeader = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
         if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
@@ -95,7 +109,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         }
         return null;
     }
-    
+
     private boolean validateToken(String token) {
         try {
             SecretKey key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
@@ -108,7 +122,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             return false;
         }
     }
-    
+
     private Claims getClaimsFromToken(String token) {
         SecretKey key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         return Jwts.parserBuilder()
@@ -117,17 +131,17 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             .parseClaimsJws(token)
             .getBody();
     }
-    
+
     private Mono<Void> unauthorizedResponse(ServerWebExchange exchange, String message) {
         ServerHttpResponse response = exchange.getResponse();
         response.setStatusCode(HttpStatus.UNAUTHORIZED);
         response.getHeaders().add("Content-Type", "application/json");
-        
+
         String body = String.format("{\"success\":false,\"message\":\"%s\",\"errorCode\":\"UNAUTHORIZED\"}", message);
-        
+
         return response.writeWith(Mono.just(response.bufferFactory().wrap(body.getBytes())));
     }
-    
+
     @Override
     public int getOrder() {
         return -100; // 高优先级
