@@ -1,0 +1,46 @@
+# IDE and Editor Files
+.idea/
+.vscode/
+*.iml
+
+# AI Assistant Files
+.claude/
+.trae/
+
+# Project Documentation and Config
+CLAUDE.md
+
+# Development Directories
+dataset/
+openspec/
+scripts_home/
+signed/
+skills/
+
+# Build Targets
+target/
+**/target/
+
+# Logs
+*.log
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Maven
+.mvn/
+mvnw
+mvnw.cmd
+
+# Compiled files
+*.class
+*.jar
+*.war
+*.ear
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
