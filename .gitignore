@@ -2,6 +2,9 @@
 .idea/
 .vscode/
 *.iml
+*.swp
+*.swo
+*~
 
 # AI Assistant Files
 .claude/
@@ -20,6 +23,8 @@ skills/
 # Build Targets
 target/
 **/target/
+dist/
+**/dist/
 
 # Logs
 *.log
@@ -42,5 +47,25 @@ mvnw.cmd
 # Temporary files
 *.tmp
 *.bak
-*.swp
-*~
+
+# Node modules
+node_modules/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Sensitive configuration files (real configs with passwords)
+**/src/main/resources/application.yaml
+**/src/main/resources/application-*.yaml
+**/src/main/resources/bootstrap.yaml
+**/src/main/resources/bootstrap-*.yaml
+
+# Docker volumes
+mysql-data/
+redis-data/
+mongo-data/
+rabbitmq-data/
+nacos-data/
+nacos-logs/

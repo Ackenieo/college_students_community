@@ -1,0 +1,132 @@
+# Application Server Port
+server:
+  port: 8083
+
+# Spring Configuration
+spring:
+  application:
+    name: agent-server
+  profiles:
+    active: dev
+
+  cloud:
+    config:
+      enabled: false
+      import-check:
+        enabled: false
+    nacos:
+      discovery:
+        server-addr: ${NACOS_ADDR:localhost:8848}
+        namespace: public
+        group: DEFAULT_GROUP
+        username: ${NACOS_USERNAME:nacos}
+        password: ${NACOS_PASSWORD:your_nacos_password}
+        metadata:
+          version: 1.0.0
+          region: beijing
+          zone: zone1
+
+  # Redis Configuration
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:your_redis_password}
+      database: 4
+      timeout: 3000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-wait: -1ms
+          max-idle: 8
+          min-idle: 0
+
+# OpenAPI
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  packages-to-scan: org.example.agentserver.controller
+  openapi:
+    info:
+      title: AI Agent Review Service API
+      description: AI agent review service APIs
+      version: 0.0.1
+  group-configs:
+    - group: agent-server
+      packages-to-scan: org.example.agentserver.controller
+
+# Knife4j
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn
+    enable-swagger-models: true
+
+# Dify Configuration
+dify:
+  api:
+    base-url: ${DIFY_API_BASE_URL:http://localhost/v1}
+    api-key: ${DIFY_API_KEY:your_dify_api_key}
+    timeout: 30000
+    max-retries: 3
+  agent:
+    default-model: gpt-3.5-turbo
+    max-tokens: 1000
+    temperature: 0.7
+
+# Eureka Client
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${server.port}
+
+# Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+
+# Resilience4j
+resilience4j:
+  circuitbreaker:
+    instances:
+      difyAgent:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        permittedNumberOfCallsInHalfOpenState: 3
+        slidingWindowType: TIME_BASED
+        minimumNumberOfCalls: 5
+        waitDurationInOpenState: 10s
+        failureRateThreshold: 50
+  retry:
+    instances:
+      difyAgent:
+        maxAttempts: 3
+        waitDuration: 1000ms
+        exponentialBackoffMultiplier: 2
+
+# Logging
+logging:
+  level:
+    org.example.agentserver: DEBUG
+    org.springframework.cloud: DEBUG
+
+# Content Moderation Configuration
+moderation:
+  enabled: true
+  threshold: 0.6
+  blocked-labels:
+    - porn
+    - violence
+    - political
+    - discrimination
+  allow-admin-bypass: true

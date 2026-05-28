@@ -1,0 +1,119 @@
+# Application Server Port
+server:
+  port: 8080
+
+# Spring Configuration
+spring:
+  application:
+    name: api-gateway
+
+  cloud:
+    gateway:
+      routes:
+        - id: user-service
+          uri: lb://user-server
+          predicates:
+            - Path=/api/users/**
+          filters:
+            - StripPrefix=1
+        - id: community-service
+          uri: lb://community-server
+          predicates:
+            - Path=/api/community/**
+          filters:
+            - StripPrefix=2
+        - id: agent-service
+          uri: lb://agent-server
+          predicates:
+            - Path=/api/agent/**
+          filters:
+            - StripPrefix=2
+        - id: notification-service
+          uri: lb://notification-server
+          predicates:
+            - Path=/api/notifications/**
+          filters:
+            - StripPrefix=1
+        # Swagger Routes
+        - id: user-service-swagger
+          uri: lb://user-server
+          predicates:
+            - Path=/v3/api-docs/user-service/**
+          filters:
+            - RewritePath=/v3/api-docs/user-service/(?<path>.*), /v3/api-docs/$\{path}
+        - id: community-service-swagger
+          uri: lb://community-server
+          predicates:
+            - Path=/v3/api-docs/community-service/**
+          filters:
+            - RewritePath=/v3/api-docs/community-service/(?<path>.*), /v3/api-docs/$\{path}
+        - id: agent-service-swagger
+          uri: lb://agent-server
+          predicates:
+            - Path=/v3/api-docs/agent-service/**
+          filters:
+            - RewritePath=/v3/api-docs/agent-service/(?<path>.*), /v3/api-docs/$\{path}
+        - id: notification-service-swagger
+          uri: lb://notification-server
+          predicates:
+            - Path=/v3/api-docs/notification-service/**
+          filters:
+            - RewritePath=/v3/api-docs/notification-service/(?<path>.*), /v3/api-docs/$\{path}
+
+      default-filters:
+        - AddRequestHeader=X-Forwarded-For, ${spring.cloud.client.ip-address}
+
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOriginPatterns: "*"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: true
+
+    nacos:
+      discovery:
+        server-addr: ${NACOS_ADDR:localhost:8848}
+        namespace: public
+        group: DEFAULT_GROUP
+        username: ${NACOS_USERNAME:nacos}
+        password: ${NACOS_PASSWORD:your_nacos_password}
+
+# Knife4j Gateway
+knife4j:
+  gateway:
+    enabled: true
+    services:
+      - name: User Service
+        location: /v3/api-docs/user-service
+      - name: Community Service
+        location: /v3/api-docs/community-service
+      - name: AI Agent Review Service
+        location: /v3/api-docs/agent-service
+      - name: Notification Service
+        location: /v3/api-docs/notification-service
+
+# Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+
+# JWT Configuration
+jwt:
+  secret: ${JWT_SECRET:your_jwt_secret_key_base64_encoded}
+  expiration: ${JWT_EXPIRATION:86400000}
+
+# Logging
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG

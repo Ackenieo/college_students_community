@@ -5,6 +5,7 @@ export const usePostStore = defineStore('post', () => {
   const posts = ref([
     {
       id: 1,
+      type: 'article',
       club: '林予安',
       org: '摄影协会',
       avatar: '林',
@@ -24,6 +25,7 @@ export const usePostStore = defineStore('post', () => {
     },
     {
       id: 2,
+      type: 'short_video',
       club: '陈一诺',
       org: '音乐社',
       avatar: '陈',
@@ -41,6 +43,7 @@ export const usePostStore = defineStore('post', () => {
     },
     {
       id: 3,
+      type: 'note',
       club: '周嘉禾',
       org: '青年志愿者协会',
       avatar: '周',
@@ -65,6 +68,66 @@ export const usePostStore = defineStore('post', () => {
     return posts.value.find(p => p.id === postId)
   }
 
+  function addPost(draft) {
+    const typeTagMap = {
+      article: '长文',
+      note: '笔记',
+      live: '直播',
+      short_video: '视频'
+    }
+    const media = buildMediaPreview(draft)
+    const post = {
+      id: Date.now(),
+      type: draft.type,
+      club: '林若安',
+      org: '校园创作者',
+      avatar: '林',
+      tag: typeTagMap[draft.type] || '动态',
+      time: '刚刚',
+      title: draft.title,
+      text: buildPostText(draft),
+      likes: 0,
+      comments: 0,
+      shares: 0,
+      liked: false,
+      visibility: draft.visibility,
+      topics: draft.topics,
+      content: draft.content,
+      cover: draft.cover,
+      media
+    }
+    posts.value.unshift(post)
+    return post
+  }
+
+  function buildPostText(draft) {
+    if (draft.type === 'article') {
+      return draft.content.summary || draft.content.blocks.find(block => block.text)?.text || '发布了一篇新的长文。'
+    }
+    if (draft.type === 'note') {
+      return draft.content.pages.find(page => page.body)?.body || '发布了一组分页笔记。'
+    }
+    if (draft.type === 'live') {
+      const mode = draft.content.mode === 'instant' ? '正在准备开播' : `${draft.content.scheduledAt || '稍后'} 开播`
+      return `${mode} · ${draft.content.description || '直播预告已创建。'}`
+    }
+    return draft.content.description || '发布了一条新的短视频。'
+  }
+
+  function buildMediaPreview(draft) {
+    if (draft.type === 'article') {
+      const blocks = draft.content.blocks.filter(block => block.type !== 'paragraph')
+      return blocks.length ? blocks.map((block, index) => ({ type: block.type === 'video' ? 'video' : 'image', label: block.label || `媒体 ${index + 1}`, tone: block.tone || 'green', radius: block.radius })) : [{ type: 'image', label: draft.cover || '长文封面', tone: 'green' }]
+    }
+    if (draft.type === 'note') {
+      return draft.content.pages.slice(0, 3).map((page, index) => ({ type: 'image', label: page.title || `第 ${index + 1} 页`, tone: ['blue', 'green', 'amber'][index % 3] }))
+    }
+    if (draft.type === 'live') {
+      return [{ type: 'video', label: draft.content.mode === 'instant' ? '立即开播' : '直播预告', tone: 'amber' }]
+    }
+    return [{ type: 'video', label: draft.content.videoLabel || '短视频', tone: 'violet' }]
+  }
+
   function toggleLike(postId) {
     const post = posts.value.find(p => p.id === postId)
     if (post) {
@@ -84,6 +147,7 @@ export const usePostStore = defineStore('post', () => {
     posts,
     categories,
     getPost,
+    addPost,
     toggleLike,
     toggleCollect
   }

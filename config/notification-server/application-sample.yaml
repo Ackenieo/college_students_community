@@ -1,0 +1,129 @@
+# Application Server Port
+server:
+  port: 8084
+
+# Spring Configuration
+spring:
+  application:
+    name: notification-server
+  profiles:
+    active: dev
+
+  cloud:
+    config:
+      enabled: false
+      import-check:
+        enabled: false
+    nacos:
+      discovery:
+        server-addr: ${NACOS_ADDR:localhost:8848}
+        namespace: public
+        group: DEFAULT_GROUP
+        username: ${NACOS_USERNAME:nacos}
+        password: ${NACOS_PASSWORD:your_nacos_password}
+        metadata:
+          version: 1.0.0
+          region: beijing
+          zone: zone1
+
+  # Database Configuration
+  datasource:
+    url: jdbc:mysql://localhost:3306/college_students?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:your_mysql_password}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  data:
+    mongodb:
+      uri: mongodb://${MONGO_USERNAME:root}:${MONGO_PASSWORD:your_mongo_password}@localhost:27017/college_community?authSource=admin
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:your_redis_password}
+      database: 3
+      timeout: 3000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-wait: -1ms
+          max-idle: 8
+          min-idle: 0
+
+  # Email Configuration
+  mail:
+    host: ${MAIL_HOST:smtp.qq.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:your_email@qq.com}
+    password: ${MAIL_PASSWORD:your_smtp_password}
+    protocol: smtp
+    default-encoding: UTF-8
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.ssl.enable: false
+      mail.smtp.starttls.enable: true
+
+  # RabbitMQ Configuration
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:root}
+    password: ${RABBITMQ_PASSWORD:your_rabbitmq_password}
+    virtual-host: /
+
+# OpenAPI
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  packages-to-scan: org.example.notificationserver.controller
+  openapi:
+    info:
+      title: Notification Service API
+      description: Notification service APIs
+      version: 0.0.1
+  group-configs:
+    - group: notification-server
+      packages-to-scan: org.example.notificationserver.controller
+
+# Knife4j
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn
+    enable-swagger-models: true
+
+# Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+
+# Resilience4j
+resilience4j:
+  circuitbreaker:
+    instances:
+      notificationService:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        permittedNumberOfCallsInHalfOpenState: 3
+        slidingWindowType: TIME_BASED
+        minimumNumberOfCalls: 5
+        waitDurationInOpenState: 10s
+        failureRateThreshold: 50
+
+# Logging
+logging:
+  level:
+    org.example.notificationserver: DEBUG
+
+# Notification Email Configuration
+notification:
+  email:
+    enabled: true
+    from-name: College Community Platform
+    from-address: ${MAIL_FROM_ADDRESS:your_email@qq.com}
+    subject-verify-code: Your Verification Code
+    subject-reset-password: Reset Password Verification Code
